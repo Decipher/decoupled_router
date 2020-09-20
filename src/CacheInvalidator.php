@@ -51,7 +51,7 @@ class CacheInvalidator {
    */
   public function invalidateByPath($path) {
     // Derive cache tags by source path.
-    $tags = $this->getTagsBySourcePath($path);
+    $tags = $this->getTagsBySourcePath($path['source']);
 
     // Path changes may change a cached 403 or 404 response.
     $tags = Cache::mergeTags($tags, ['4xx-response']);

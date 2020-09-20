@@ -17,11 +17,10 @@ function decoupled_router_path_update($path) {
 
 /**
  * Implements hook_ENTITY_TYPE_insert().
- *
- * @param PathAliasInterface $path_alias
  */
 function decoupled_router_path_alias_insert(PathAliasInterface $path_alias) {
-  \Drupal::service('decoupled_router.cache_invalidation')->invalidateByPath($path_alias->getAlias());
+  \Drupal::service('decoupled_router.cache_invalidation')
+    ->invalidateByPath(['source' => $path_alias->getAlias()]);
 }
 
 /**
