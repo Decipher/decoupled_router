@@ -29,6 +29,8 @@ class CacheInvalidator {
   /**
    * CacheInvalidator constructor.
    *
+   * @param \Drupal\Core\Cache\CacheTagsInvalidatorInterface $invalidator
+   *   The cache tag invalidator.
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
    *   The entity type manger.
    */
@@ -40,8 +42,8 @@ class CacheInvalidator {
   /**
    * Invalidate cached responses associated with the given path.
    *
-   * This is called whenever an URL alias is created, updated or deleted and makes
-   * sure the relevant Decoupled Router responses are invalidated.
+   * This is called whenever an URL alias is created, updated or deleted and
+   * makes sure the relevant Decoupled Router responses are invalidated.
    *
    * @param array $path
    *   The path array.
@@ -49,7 +51,7 @@ class CacheInvalidator {
    * @throws \Drupal\Component\Plugin\Exception\PluginException
    * @see https://www.drupal.org/project/drupal/issues/2480077
    */
-  public function invalidateByPath($path) {
+  public function invalidateByPath(array $path) {
     // Derive cache tags by source path.
     $tags = $this->getTagsBySourcePath($path['source']);
 

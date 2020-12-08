@@ -2,8 +2,6 @@
 
 namespace Drupal\decoupled_router\Controller;
 
-use Drupal\Component\Serialization\Json;
-use Drupal\Core\Cache\CacheableResponse;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Language\LanguageInterface;
 use Drupal\decoupled_router\PathTranslatorEvent;
@@ -77,8 +75,11 @@ class PathTranslator extends ControllerBase {
     /** @var \Drupal\Core\Cache\CacheableJsonResponse $response */
     $response = $event->getResponse();
     $response->headers->add(['Content-Type' => 'application/json']);
-    $response->getCacheableMetadata()->addCacheContexts(['url.query_args:path', 'languages:' . LanguageInterface::TYPE_CONTENT]);
-    if($response->getStatusCode() === Response::HTTP_NOT_FOUND) {
+    $response->getCacheableMetadata()->addCacheContexts([
+      'url.query_args:path',
+      'languages:' . LanguageInterface::TYPE_CONTENT,
+    ]);
+    if ($response->getStatusCode() === Response::HTTP_NOT_FOUND) {
       $response->getCacheableMetadata()->addCacheTags(['4xx-response']);
     }
     return $response;

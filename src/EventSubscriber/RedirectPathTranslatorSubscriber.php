@@ -108,10 +108,13 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
   /**
    * Generates URL for the redirect, based on redirect module configurations.
    *
-   * @param string $path URL to redirect to.
-   * @param string $query Original query string on the requested path.
+   * @param string $path
+   *   URL to redirect to.
+   * @param string $query
+   *   Original query string on the requested path.
    *
-   * @return string Redirect URL to use.
+   * @return string
+   *   Redirect URL to use.
    */
   private function makeRedirectUrl($path, $query) {
     return $query && $this->configFactory->get('redirect.settings')

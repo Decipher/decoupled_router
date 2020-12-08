@@ -38,6 +38,11 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
    */
   protected $nodes = [];
 
+  /**
+   * Modules list.
+   *
+   * @var array
+   */
   public static $modules = [
     'language',
     'node',
@@ -128,10 +133,12 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     $make_assertions = function ($path, DecoupledRouterFunctionalTest $test) {
       $res = $test->drupalGet(
         Url::fromRoute('decoupled_router.path_translation'),
-        ['query' => [
-          'path' => $path,
-          '_format' => 'json',
-        ]]
+        [
+          'query' => [
+            'path' => $path,
+            '_format' => 'json',
+          ],
+        ]
       );
       $test->assertSession()->statusCodeEquals(200);
       $output = Json::decode($res);
@@ -158,7 +165,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   }
 
   /**
-   * Test that unpublished content ist not available
+   * Test that unpublished content ist not available.
    */
   public function testUnpublishedContent() {
     $values = [
@@ -166,7 +173,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'type' => 'article',
       'path' => '/node--unpublished',
       'title' => $this->getRandomGenerator()->name(),
-      'status' => NodeInterface::NOT_PUBLISHED
+      'status' => NodeInterface::NOT_PUBLISHED,
     ];
     $node = $this->createNode($values);
 
@@ -176,20 +183,22 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     $redirect->setLanguage(Language::LANGCODE_NOT_SPECIFIED);
     $redirect->save();
 
-    // test access via node_id to unpublished content
+    // Test access via node_id to unpublished content.
     $res = $this->drupalGet(
       Url::fromRoute('decoupled_router.path_translation'),
-      ['query' => [
-        'path' => '/unp',
-        '_format' => 'json',
-      ]]
+      [
+        'query' => [
+          'path' => '/unp',
+          '_format' => 'json',
+        ],
+      ]
     );
     $output = Json::decode($res);
     $this->assertArrayNotHasKey('redirect', $output);
     $this->assertEquals(
       [
         'message' => 'Access denied for entity.',
-        'details' => 'This user does not have access to view the resolved entity. Please authenticate and try again.'
+        'details' => 'This user does not have access to view the resolved entity. Please authenticate and try again.',
       ],
       $output
     );
@@ -201,13 +210,15 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'bypass node access',
     ]);
     $this->drupalLogin($admin_user);
-    // test access via node_id to unpublished content
+    // Test access via node_id to unpublished content.
     $res = $this->drupalGet(
       Url::fromRoute('decoupled_router.path_translation'),
-      ['query' => [
-        'path' => '/unp',
-        '_format' => 'json',
-      ]]
+      [
+        'query' => [
+          'path' => '/unp',
+          '_format' => 'json',
+        ],
+      ]
     );
     $output = Json::decode($res);
     $this->assertSession()->statusCodeEquals(200);
@@ -237,9 +248,12 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'redirect' => [
         [
           'from' => '/unp',
-          'to' => '/' . implode('/', array_filter([trim($this->getBasePath(), '/'), 'node--unpublished'])),
+          'to' => '/' . implode('/', array_filter([
+            trim($this->getBasePath(), '/'),
+            'node--unpublished',
+          ])),
           'status' => '301',
-        ]
+        ],
       ],
     ];
     $this->assertEquals($expected, $output);
@@ -310,4 +324,5 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     );
     return empty($parts['path']) ? '/' : $parts['path'];
   }
+
 }

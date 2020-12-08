@@ -2,7 +2,6 @@
 
 namespace Drupal\decoupled_router\EventSubscriber;
 
-use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
@@ -59,14 +58,14 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
   protected $moduleHandler;
 
   /**
-   * The config factory
+   * The config factory.
    *
    * @var \Drupal\Core\Config\ConfigFactoryInterface
    */
   protected $configFactory;
 
   /**
-   * The alias manager
+   * The alias manager.
    *
    * @var \Drupal\path_alias\AliasManagerInterface
    */
@@ -84,9 +83,9 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
    *   The module handler.
    * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
-   *   The config factory
+   *   The config factory.
    * @param \Drupal\path_alias\AliasManagerInterface $aliasManager
-   *   The alias manager
+   *   The alias manager.
    */
   public function __construct(
     ContainerInterface $container,
@@ -123,9 +122,9 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       // but assume that it's working.
       if (UrlHelper::isExternal($path)) {
         $response->setStatusCode(200);
-        $response->setData(array(
+        $response->setData([
           'resolved' => $path,
-        ));
+        ]);
       }
       return;
     }
@@ -149,7 +148,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     if (!$can_view->isAllowed()) {
       $response->setData([
         'message' => 'Access denied for entity.',
-        'details' => 'This user does not have access to view the resolved entity. Please authenticate and try again.'
+        'details' => 'This user does not have access to view the resolved entity. Please authenticate and try again.',
       ]);
       $response->setStatusCode(403);
       $response->addCacheableDependency($can_view);
@@ -209,7 +208,9 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       $route_name = sprintf('jsonapi.%s.individual', $type_name);
       $individual = Url::fromRoute(
         $route_name,
-        [static::getEntityRouteParameterName($route_name, $entity_type_id) => $entity->uuid()],
+        [
+          static::getEntityRouteParameterName($route_name, $entity_type_id) => $entity->uuid(),
+        ],
         ['absolute' => TRUE]
       )->toString(TRUE);
       $response->addCacheableDependency($entry_point_url);
@@ -221,11 +222,10 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         'basePath' => $jsonapi_base_path,
         'entryPoint' => $entry_point_url->getGeneratedUrl(),
       ];
-      $deprecation_message = 'This property has been deprecated and will be removed in the next version of Decoupled Router. Use @alternative instead.';
       $output['meta'] = [
         'deprecated' => [
           'jsonapi.pathPrefix' => $this->t(
-            $deprecation_message, ['@alternative' => 'basePath']
+            'This property has been deprecated and will be removed in the next version of Decoupled Router. Use @alternative instead.', ['@alternative' => 'basePath']
           ),
         ],
       ];
@@ -264,9 +264,9 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     else {
       $entity_type_id = $this->findEntityTypeFromRoute($route);
       /** @var \Drupal\Core\Entity\EntityInterface $entity */
-      // TODO: $match_info[$entity_type_id] is broken for JSON API 2.x routes.
+      // @todo $match_info[$entity_type_id] is broken for JSON API 2.x routes.
       // Now it will be $match_info[$entity_type_id] for core and
-      // $match_info['entity'] for JSON API :-(
+      // $match_info['entity'] for JSON API :-(.
       if (
         !empty($entity_type_id) &&
         !empty($match_info[$entity_type_id]) &&
@@ -354,7 +354,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
   /**
    * Removes the subdir prefix from the path.
    *
-   * @param $path
+   * @param string $path
    *   The path that can contain the subdir prefix.
    * @param \Symfony\Component\HttpFoundation\Request $request
    *   The request to extract the path prefix from.
