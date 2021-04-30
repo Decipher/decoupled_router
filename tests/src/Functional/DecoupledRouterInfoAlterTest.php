@@ -14,6 +14,11 @@ use Drupal\Tests\BrowserTestBase;
 class DecoupledRouterInfoAlterTest extends BrowserTestBase {
 
   /**
+   * {@inheritdoc}
+   */
+  protected $defaultTheme = 'stark';
+
+  /**
    * The user.
    *
    * @var \Drupal\user\Entity\User
