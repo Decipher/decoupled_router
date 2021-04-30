@@ -49,6 +49,7 @@ class CacheInvalidator {
    *   The path array.
    *
    * @throws \Drupal\Component\Plugin\Exception\PluginException
+   *
    * @see https://www.drupal.org/project/drupal/issues/2480077
    */
   public function invalidateByPath(array $path) {

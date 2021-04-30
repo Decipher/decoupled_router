@@ -10,14 +10,14 @@ use Drupal\node\NodeInterface;
 use Drupal\redirect\Entity\Redirect;
 use Drupal\Tests\BrowserTestBase;
 
-const DRUPAL_CI_BASE_URL = 'http://localhost/subdir';
-
 /**
  * Test class.
  *
  * @group decoupled_router
  */
 class DecoupledRouterFunctionalTest extends BrowserTestBase {
+
+  const DRUPAL_CI_BASE_URL = 'http://localhost/subdir';
 
   /**
    * {@inheritdoc}
@@ -320,7 +320,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     $parts = parse_url(
       (
         getenv('SIMPLETEST_BASE_URL') ?: getenv('WEB_HOST')
-      ) ?: DRUPAL_CI_BASE_URL
+      ) ?: self::DRUPAL_CI_BASE_URL
     );
     return empty($parts['path']) ? '/' : $parts['path'];
   }

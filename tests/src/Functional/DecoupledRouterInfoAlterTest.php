@@ -20,6 +20,11 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
    */
   protected $user;
 
+  /**
+   * Modules list.
+   *
+   * @var array
+   */
   public static $modules = [
     'decoupled_router',
     'node',

@@ -197,7 +197,9 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       $output['label'] = $entity->label();
     }
     // Allow to alter basic router info.
-    $this->moduleHandler->invokeAll('decoupled_router_info_alter', [&$output, ['entity' => $entity]]);
+    $this->moduleHandler->invokeAll('decoupled_router_info_alter', [
+      &$output, ['entity' => $entity],
+    ]);
 
     // If the route is JSON API, it means that JSON API is installed and its
     // services can be used.
