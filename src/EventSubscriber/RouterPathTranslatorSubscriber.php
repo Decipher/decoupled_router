@@ -135,11 +135,11 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     }
     /** @var \Drupal\Core\Entity\EntityInterface $entity */
     /** @var bool $param_uses_uuid */
-    list(
+    [
       $entity,
       $param_uses_uuid,
-      $route_parameter_entity_key
-    ) = $this->findEntityAndKeys($match_info);
+      $route_parameter_entity_key,
+    ] = $this->findEntityAndKeys($match_info);
     if (!$entity) {
       $this->logger->notice('A route has been found but it has no entity information.');
       return;
