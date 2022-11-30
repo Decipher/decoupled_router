@@ -43,7 +43,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'language',
     'node',
     'path',
@@ -55,7 +55,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $language = ConfigurableLanguage::createFromLangcode('ca');
     $language->save();

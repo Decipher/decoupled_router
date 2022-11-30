@@ -49,8 +49,9 @@ class PathTranslatorEvent extends KernelEvent {
   public function __construct(HttpKernelInterface $kernel, Request $request, $requestType, $path) {
     parent::__construct($kernel, $request, $requestType);
     $this->path = $path;
+
     // Assume a 404 from start.
-    $this->response = CacheableJsonResponse::create(
+    $this->response = new CacheableJsonResponse(
       [
         'message' => $this->t(
           'Unable to resolve path @path.',

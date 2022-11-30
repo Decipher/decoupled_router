@@ -1,7 +1,6 @@
-name: Test decoule router
+name: Test decoupled router
 description: Perform alterations before to return the router info.
 type: module
-package: testing
-core_version_requirement: ^8.8 || ^9
+package: Testing
 dependencies:
   - decoupled_router:decoupled_router

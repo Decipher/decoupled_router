@@ -30,7 +30,7 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
    *
    * @var array
    */
-  public static $modules = [
+  protected static $modules = [
     'decoupled_router',
     'node',
     'path',
@@ -41,7 +41,7 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected function setUp() {
+  protected function setUp(): void {
     parent::setUp();
     $this->drupalCreateContentType([
       'type' => 'article',

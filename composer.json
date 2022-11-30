@@ -1,7 +1,7 @@
 {
     "name": "drupal/decoupled_router",
-    "description": "Provides an endpoint that will help you resolve path aliases and redirects for entity related routes.",
     "type": "drupal-module",
+    "description": "Provides an endpoint that will help you resolve path aliases and redirects for entity related routes.",
     "license": "GPL-2.0-or-later",
     "authors": [
         {
@@ -10,6 +10,6 @@
         }
     ],
     "require-dev": {
-        "drupal/redirect": "^1.0@beta"
+        "drupal/redirect": "^1.8"
     }
 }

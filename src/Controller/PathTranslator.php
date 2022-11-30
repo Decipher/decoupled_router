@@ -63,6 +63,8 @@ class PathTranslator extends ControllerBase {
       throw new NotFoundHttpException('Unable to translate empty path. Please send a ?path query string parameter with your request.');
     }
     // Now that we have the path, let's fire an event for translations.
+    // @deprecated since symfony/http-kernel 5.3, use MAIN_REQUEST instead.
+    // To ease the migration, this constant won't be removed until Symfony 7.0.
     $event = new PathTranslatorEvent(
       $this->httpKernel,
       $request,
@@ -71,7 +73,7 @@ class PathTranslator extends ControllerBase {
     );
     // Event subscribers are in charge of setting the appropriate response,
     // including cacheability metadata.
-    $this->eventDispatcher->dispatch(PathTranslatorEvent::TRANSLATE, $event);
+    $this->eventDispatcher->dispatch($event, PathTranslatorEvent::TRANSLATE);
     /** @var \Drupal\Core\Cache\CacheableJsonResponse $response */
     $response = $event->getResponse();
     $response->headers->add(['Content-Type' => 'application/json']);
