@@ -95,6 +95,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       return;
     }
 
+    $path = $this->cleanQueriesAndFragment($path);
     try {
       $match_info = $this->router->match($path);
     }
@@ -344,6 +345,22 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     // installed under http://example.com/d8/index.php
     $regexp = preg_quote($request->getBasePath(), '/');
     return preg_replace(sprintf('/^%s/', $regexp), '', $path);
+  }
+
+  /**
+   * Removes fragments and queries from the path.
+   *
+   * @param string $path
+   *   The path that can contain the subdir prefix.
+   *
+   * @return string
+   *   The clean path.
+   */
+  protected function cleanQueriesAndFragment($path) {
+    $path = explode('?', $path)[0];
+    $path = explode('#', $path)[0];
+
+    return $path;
   }
 
   /**
