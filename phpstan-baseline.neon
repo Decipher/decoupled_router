@@ -1,0 +1,28 @@
+parameters:
+	ignoreErrors:
+		-
+			message: """
+				#^Fetching deprecated class constant MASTER_REQUEST of class Symfony\\\\Component\\\\HttpKernel\\\\HttpKernelInterface\\:
+				since symfony/http\\-kernel 5\\.3, use MAIN_REQUEST instead\\.
+				            To ease the migration, this constant won't be removed until Symfony 7\\.0\\.$#
+			"""
+			count: 1
+			path: src/Controller/PathTranslator.php
+
+		-
+			message: "#^Unsafe usage of new static\\(\\)\\.$#"
+			count: 1
+			path: src/Controller/PathTranslator.php
+
+		-
+			message: """
+				#^Call to deprecated function watchdog_exception\\(\\)\\:
+				in drupal\\:10\\.1\\.0 and is removed from drupal\\:11\\.0\\.0\\. Use
+				  Use \\\\Drupal\\\\Core\\\\Utility\\\\Error\\:\\:logException\\(\\) instead\\.$#
+			"""
+			count: 1
+			path: src/EventSubscriber/RouterPathTranslatorSubscriber.php
+		-
+			message: "#^Access to an undefined property Drupal\\\\Core\\\\Field\\\\FieldItemListInterface\\<Drupal\\\\Core\\\\Field\\\\FieldItemInterface\\>\\:\\:\\$uri\\.$#"
+			count: 1
+			path: src/EventSubscriber/RedirectPathTranslatorSubscriber.php
