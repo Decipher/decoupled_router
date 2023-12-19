@@ -5,7 +5,7 @@ decoupled_router.path_translation:
     _controller: '\Drupal\decoupled_router\Controller\PathTranslator::translate'
   methods: [GET]
   options:
-    _auth: ['basic_auth', 'cookie', 'oauth2']
+    _auth: ['basic_auth', 'cookie', 'oauth2', 'jwt_auth']
   requirements:
     _permission: 'access content'
     _format: json
