@@ -146,7 +146,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
 
       return;
     }
-    $entity_param = $entity->id();
+    $entity_param = $param_uses_uuid ? $entity->uuid() : $entity->id();
     $resolved_url = Url::fromRoute($match_info[RouteObjectInterface::ROUTE_NAME], [
       $route_parameter_entity_key => $entity_param,
     ], $resolved_url_options);
