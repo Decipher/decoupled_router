@@ -62,13 +62,15 @@ class PathTranslator extends ControllerBase {
     if (empty($path)) {
       throw new NotFoundHttpException('Unable to translate empty path. Please send a ?path query string parameter with your request.');
     }
+    // Handling backward compatibility to manage the Http-kernel request.
+    $request_type = version_compare(\Drupal::VERSION, '10.0', '>=') ? HttpKernelInterface::MAIN_REQUEST : HttpKernelInterface::MASTER_REQUEST;
     // Now that we have the path, let's fire an event for translations.
     // @deprecated since symfony/http-kernel 5.3, use MAIN_REQUEST instead.
     // To ease the migration, this constant won't be removed until Symfony 7.0.
     $event = new PathTranslatorEvent(
       $this->httpKernel,
       $request,
-      HttpKernelInterface::MASTER_REQUEST,
+      $request_type,
       sprintf('/%s', ltrim($path, '/'))
     );
     // Event subscribers are in charge of setting the appropriate response,

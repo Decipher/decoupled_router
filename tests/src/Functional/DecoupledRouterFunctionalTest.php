@@ -204,7 +204,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     );
     $this->assertSession()->statusCodeEquals(403);
 
-    // Make sure priviledged users can access the output.
+    // Make sure privileged users can access the output.
     $admin_user = $this->drupalCreateUser([
       'administer nodes',
       'bypass node access',

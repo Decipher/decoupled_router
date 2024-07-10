@@ -13,6 +13,7 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
+use Drupal\Core\Utility\Error;
 use Drupal\decoupled_router\PathTranslatorEvent;
 use Drupal\path_alias\AliasManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -94,7 +95,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     UrlMatcherInterface $router,
     ModuleHandlerInterface $module_handler,
     ConfigFactoryInterface $config_factory,
-    AliasManagerInterface $aliasManager
+    AliasManagerInterface $aliasManager,
   ) {
     $this->container = $container;
     $this->logger = $logger;
@@ -169,7 +170,14 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         'details' => 'A valid entity was found but it was impossible to generate a valid canonical URL for it.',
       ]);
       $response->setStatusCode(500);
+      // Logging error exceptions.
+      // LogException method introduced in D10.1 and
+      // Error class exists from long back.
+      method_exists(Error::class, 'logException') ?
+      Error::logException($this->logger, $e) :
+      // @phpstan-ignore-next-line as it is deprecated after D10.1
       watchdog_exception('decoupled_router', $e);
+
       return;
     }
     $entity_param = $param_uses_uuid ? $entity->id() : $entity->uuid();

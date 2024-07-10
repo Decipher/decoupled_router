@@ -9,7 +9,10 @@
             "email": "mateu.aguilo.bosch@gmail.com"
         }
     ],
+    "require": {
+        "php": ">=8.1"
+    },
     "require-dev": {
-        "drupal/redirect": "^1.8"
+        "drupal/redirect": "dev-1.x"
     }
 }

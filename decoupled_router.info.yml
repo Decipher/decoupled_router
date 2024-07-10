@@ -2,7 +2,7 @@ name: Decoupled Router
 type: module
 description: 'Handles the awkwardness of routing in decoupled architectures.'
 package: Web services
-core_version_requirement: ^8.8 || ^9 || ^10
+core_version_requirement: ^9.5 || ^10 || ^11
 dependencies:
   - drupal:path_alias
 test_dependencies:
