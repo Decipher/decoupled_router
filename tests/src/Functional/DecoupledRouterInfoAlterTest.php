@@ -104,6 +104,7 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
           'jsonapi.pathPrefix' => 'This property has been deprecated and will be removed in the next version of Decoupled Router. Use basePath instead.',
         ],
       ],
+      'isExternal' => FALSE,
     ];
     $this->assertEquals($expected, $output);
 

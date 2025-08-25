@@ -114,20 +114,24 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       $this->logger->error('Unable to get the response object for the decoupled router event.');
       return;
     }
-    $path = $event->getPath();
-    $path = $this->cleanSubdirInPath($path, $event->getRequest());
+    $path = $this->cleanSubdirInPath($event->getPath(), $event->getRequest());
+
+    // If URL is external, we won't perform checks for content in Drupal,
+    // but assume that it's working.
+    if (UrlHelper::isExternal($path)) {
+      $response->setStatusCode(200);
+      $response->setData([
+        'resolved' => $path,
+        'isExternal' => TRUE,
+        'isHomePath' => FALSE,
+      ]);
+      return;
+    }
+
     try {
       $match_info = $this->router->match($path);
     }
     catch (ResourceNotFoundException $exception) {
-      // If URL is external, we won't perform checks for content in Drupal,
-      // but assume that it's working.
-      if (UrlHelper::isExternal($path)) {
-        $response->setStatusCode(200);
-        $response->setData([
-          'resolved' => $path,
-        ]);
-      }
       return;
     }
     catch (MethodNotAllowedException $exception) {
@@ -195,6 +199,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     $response->addCacheableDependency($label_accessible);
     $output = [
       'resolved' => $resolved_url->getGeneratedUrl(),
+      'isExternal' => FALSE,
       'isHomePath' => $is_home_path,
       'entity' => [
         'canonical' => $canonical_url->getGeneratedUrl(),

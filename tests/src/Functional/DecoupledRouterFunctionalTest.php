@@ -93,6 +93,10 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     $redirect->setRedirect('/node--0--ca');
     $redirect->setLanguage('ca');
     $redirect->save();
+    $redirect = Redirect::create(['status_code' => '301']);
+    $redirect->setSource('/foobar');
+    $redirect->setRedirect('http://example.com/foobar');
+    $redirect->save();
     \Drupal::service('router.builder')->rebuild();
   }
 
@@ -162,6 +166,36 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     array_walk($test_cases, function ($test_case) use ($make_assertions) {
       $make_assertions($test_case, $this);
     });
+  }
+
+  /**
+   * Tests reading external redirect.
+   */
+  public function testExternalRedirect() {
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'foobar',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $expected = [
+      'resolved' => 'http://example.com/foobar',
+      'isHomePath' => FALSE,
+      'redirect' => [
+        [
+          'from' => '/foobar',
+          'to' => 'http://example.com/foobar',
+          'status' => '301',
+        ],
+      ],
+      'isExternal' => TRUE,
+    ];
+    $this->assertEquals($expected, $output);
   }
 
   /**
@@ -255,6 +289,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
           'status' => '301',
         ],
       ],
+      'isExternal' => FALSE,
     ];
     $this->assertEquals($expected, $output);
   }
