@@ -279,7 +279,6 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     }
     else {
       $entity_type_id = $this->findEntityTypeFromRoute($route);
-      /** @var \Drupal\Core\Entity\EntityInterface $entity */
       // @todo $match_info[$entity_type_id] is broken for JSON API 2.x routes.
       // Now it will be $match_info[$entity_type_id] for core and
       // $match_info['entity'] for JSON API :-(.
