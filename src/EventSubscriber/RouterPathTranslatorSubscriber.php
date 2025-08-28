@@ -139,10 +139,8 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       return;
     }
     /** @var \Drupal\Core\Entity\EntityInterface $entity */
-    /** @var bool $param_uses_uuid */
     [
       $entity,
-      $param_uses_uuid,
       $route_parameter_entity_key,
     ] = $this->findEntityAndKeys($match_info);
     if (!$entity) {
@@ -184,7 +182,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
 
       return;
     }
-    $entity_param = $param_uses_uuid ? $entity->id() : $entity->uuid();
+    $entity_param = $entity->id();
     $resolved_url = Url::fromRoute($match_info[RouteObjectInterface::ROUTE_NAME], [
       $route_parameter_entity_key => $entity_param,
     ], ['absolute' => TRUE])->toString(TRUE);
@@ -266,15 +264,13 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    *
    * @return array
    *   The pair of \Drupal\Core\Entity\EntityInterface and bool with the
-   *   underlying entity and the info weather or not it uses UUID for the param
-   *   enhancement. It also returns the name of the parameter under which the
-   *   entity lives in the route ('node' vs 'entity').
+   *   underlying entity. It also returns the name of the parameter under which
+   *   the entity lives in the route ('node' vs 'entity').
    */
   protected function findEntityAndKeys(array $match_info) {
     $entity = NULL;
     /** @var \Symfony\Component\Routing\Route $route */
     $route = $match_info[RouteObjectInterface::ROUTE_OBJECT];
-    $route_parameters = $route->getOption('parameters');
     $route_parameter_entity_key = 'entity';
     if (
       !empty($match_info['entity']) &&
@@ -296,12 +292,8 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         $entity = $match_info[$entity_type_id];
       }
     }
-    $param_uses_uuid = strpos(
-      $route_parameters[$route_parameter_entity_key]['converter'],
-      'entity_uuid'
-    ) === FALSE;
 
-    return [$entity, $param_uses_uuid, $route_parameter_entity_key];
+    return [$entity, $route_parameter_entity_key];
   }
 
   /**
