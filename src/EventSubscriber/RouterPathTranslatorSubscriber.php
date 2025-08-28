@@ -173,12 +173,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       ]);
       $response->setStatusCode(500);
       // Logging error exceptions.
-      // LogException method introduced in D10.1 and
-      // Error class exists from long back.
-      method_exists(Error::class, 'logException') ?
-      Error::logException($this->logger, $e) :
-      // @phpstan-ignore-next-line as it is deprecated after D10.1
-      watchdog_exception('decoupled_router', $e);
+      Error::logException($this->logger, $e);
 
       return;
     }
