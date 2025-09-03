@@ -74,6 +74,11 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
   protected $aliasManager;
 
   /**
+   * Determines if a message should be logged if an entity not found.
+   */
+  protected const LOG_ENTITY_NOT_FOUND = TRUE;
+
+  /**
    * RouterPathTranslatorSubscriber constructor.
    *
    * @param \Symfony\Component\DependencyInjection\ContainerInterface $container
@@ -144,7 +149,9 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       $route_parameter_entity_key,
     ] = $this->findEntityAndKeys($match_info);
     if (!$entity) {
-      $this->logger->notice('A route has been found but it has no entity information.');
+      if (static::LOG_ENTITY_NOT_FOUND) {
+        $this->logger->notice('A route has been found but it has no entity information.');
+      }
       return;
     }
     $response->addCacheableDependency($entity);

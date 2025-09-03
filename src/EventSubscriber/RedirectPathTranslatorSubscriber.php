@@ -18,6 +18,11 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
   /**
    * {@inheritdoc}
    */
+  protected const LOG_ENTITY_NOT_FOUND = FALSE;
+
+  /**
+   * {@inheritdoc}
+   */
   public static function getSubscribedEvents(): array {
     // We wanna run before the router-based path translator because redirects
     // naturally act before routing subsystem in Drupal HTTP kernel.
@@ -89,11 +94,24 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
     // Now call the route level.
     parent::onPathTranslation($event);
 
-    if (!$response->isSuccessful()) {
+    if ($response->isSuccessful()) {
+      $content = Json::decode($response->getContent());
+    }
+    elseif ($response->getStatusCode() === 404) {
+      // We should return the redirect data.
+      $response->setStatusCode(200);
+      $redirect_url = $redirect->getRedirectUrl()->setAbsolute(TRUE)->toString();
+      $content = [
+        'resolved' => $this->makeRedirectUrl($redirect_url, $original_query_string),
+        'isExternal' => FALSE,
+        'isHomePath' => $this->resolvedPathIsHomePath($redirect_url),
+      ];
+    }
+    else {
       return;
     }
+
     // Set the content in the response.
-    $content = Json::decode($response->getContent());
     $response->setData(array_merge(
       $content,
       ['redirect' => $redirects_trace]

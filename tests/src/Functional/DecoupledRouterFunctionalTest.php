@@ -376,6 +376,61 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   }
 
   /**
+   * Tests decoupled router with non-entity routes.
+   */
+  public function testViews() {
+    \Drupal::service('module_installer')->install(['views']);
+    // Create a redirect to the node listing.
+    $redirect = Redirect::create(['status_code' => '301']);
+    $redirect->setSource('/non-entity');
+    $redirect->setRedirect('/node');
+    $redirect->setLanguage(Language::LANGCODE_NOT_SPECIFIED);
+    $redirect->save();
+    $this->rebuildAll();
+
+    $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'node',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    // Accessing the non-entity route should 404 because the decoupled router is
+    // about getting entity and redirect info.
+    $this->assertSession()->statusCodeEquals(404);
+
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'non-entity',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $expected = [
+      'resolved' => $this->buildUrl('/node'),
+      'isExternal' => FALSE,
+      'isHomePath' => FALSE,
+      'redirect' => [
+        [
+          'from' => '/non-entity',
+          'to' => '/' . implode('/', array_filter([
+            trim($this->getBasePath(), '/'),
+            'node',
+          ])),
+          'status' => '301',
+        ],
+      ],
+    ];
+    $this->assertSame($expected, $output);
+  }
+
+  /**
    * Computes the base path under which the Drupal managed URLs are available.
    *
    * @return string
