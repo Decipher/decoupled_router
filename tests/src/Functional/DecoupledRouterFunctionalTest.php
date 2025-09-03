@@ -9,6 +9,7 @@ use Drupal\language\Entity\ConfigurableLanguage;
 use Drupal\node\NodeInterface;
 use Drupal\redirect\Entity\Redirect;
 use Drupal\Tests\BrowserTestBase;
+use Drupal\Tests\system\Functional\Cache\AssertPageCacheContextsAndTagsTrait;
 
 /**
  * Test class.
@@ -16,6 +17,7 @@ use Drupal\Tests\BrowserTestBase;
  * @group decoupled_router
  */
 class DecoupledRouterFunctionalTest extends BrowserTestBase {
+  use AssertPageCacheContextsAndTagsTrait;
 
   const DRUPAL_CI_BASE_URL = 'http://localhost/subdir';
 
@@ -83,9 +85,16 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     $redirect->setRedirect('/node--0');
     $redirect->setLanguage(Language::LANGCODE_NOT_SPECIFIED);
     $redirect->save();
+    // Create redirect chain (bar -> foo -> node--0).
     $redirect = Redirect::create(['status_code' => '301']);
     $redirect->setSource('/bar');
     $redirect->setRedirect('/foo');
+    $redirect->setLanguage(Language::LANGCODE_NOT_SPECIFIED);
+    $redirect->save();
+    // Create redirect chain (chain -> bar -> foo -> node--0).
+    $redirect = Redirect::create(['status_code' => '301']);
+    $redirect->setSource('/chain');
+    $redirect->setRedirect('/bar');
     $redirect->setLanguage(Language::LANGCODE_NOT_SPECIFIED);
     $redirect->save();
     $redirect = Redirect::create(['status_code' => '301']);
@@ -194,6 +203,62 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
         ],
       ],
       'isExternal' => TRUE,
+    ];
+    $this->assertEquals($expected, $output);
+  }
+
+  /**
+   * Tests reading redirect chain.
+   */
+  public function testChainedRedirect() {
+    $node = $this->nodes[0];
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'chain',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    // Ensure all redirects involved are in the cache tags for the response.
+    $this->assertCacheTags(['node:1', 'redirect:1', 'redirect:2', 'redirect:3']);
+    $output = Json::decode($res);
+    $expected = [
+      'resolved' => $this->buildUrl('/node--0'),
+      'isHomePath' => FALSE,
+      'redirect' => [
+        [
+          'from' => '/chain',
+          'to' => '/' . implode('/', array_filter([
+            trim($this->getBasePath(), '/'),
+            'node--0',
+          ])),
+          'status' => '301',
+        ],
+      ],
+      'isExternal' => FALSE,
+      'entity' => [
+        'canonical' => $this->buildUrl('/node--0'),
+        'type' => 'node',
+        'bundle' => 'article',
+        'id' => $node->id(),
+        'uuid' => $node->uuid(),
+      ],
+      'label' => $node->label(),
+      'jsonapi' => [
+        'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
+        'resourceName' => 'node--article',
+        'pathPrefix' => 'jsonapi',
+        'basePath' => '/jsonapi',
+        'entryPoint' => $this->buildUrl('/jsonapi'),
+      ],
+      'meta' => [
+        'deprecated' => [
+          'jsonapi.pathPrefix' => 'This property has been deprecated and will be removed in the next version of Decoupled Router. Use basePath instead.',
+        ],
+      ],
     ];
     $this->assertEquals($expected, $output);
   }

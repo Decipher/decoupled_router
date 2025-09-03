@@ -1,0 +1,29 @@
+<?php
+
+/**
+ * @file
+ * Module install file.
+ */
+
+/**
+ * Implements hook_requirements().
+ */
+function decoupled_router_requirements($phase) {
+  $requirements = [];
+  if (\Drupal::moduleHandler()->moduleExists('redirect')) {
+    $version = \Drupal::service('extension.list.module')->get('redirect')->info['version'];
+    if ($version !== NULL) {
+      if (str_starts_with($version, '8.x-')) {
+        $version = substr($version, 4);
+      }
+      if (version_compare($version, '1.12', '<')) {
+        $requirements['decoupled_router_redirect'] = [
+          'title' => t('Decoupled router - Redirect compatibility'),
+          'severity' => REQUIREMENT_ERROR,
+          'description' => t('The Redirect module must be version 1.12 or greater.'),
+        ];
+      }
+    }
+  }
+  return $requirements;
+}

@@ -3,10 +3,20 @@
 namespace Drupal\decoupled_router\EventSubscriber;
 
 use Drupal\Component\Serialization\Json;
+use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Cache\CacheableJsonResponse;
-use Drupal\Core\GeneratedUrl;
+use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Url;
 use Drupal\decoupled_router\PathTranslatorEvent;
+use Drupal\path_alias\AliasManagerInterface;
+use Drupal\redirect\RedirectRepository;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
 
 /**
  * Event subscriber that processes a path translation with the redirect info.
@@ -14,6 +24,19 @@ use Drupal\decoupled_router\PathTranslatorEvent;
  * @see \Drupal\decoupled_router\DecoupledRouterServiceProvider
  */
 class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
+
+  public function __construct(
+    ContainerInterface $container,
+    #[Autowire(service: 'logger.channel.decoupled_router')] LoggerInterface $logger,
+    #[Autowire(service: 'router.no_access_checks')] UrlMatcherInterface $router,
+    ModuleHandlerInterface $module_handler,
+    ConfigFactoryInterface $config_factory,
+    AliasManagerInterface $aliasManager,
+    protected LanguageManagerInterface $languageManager,
+    protected RedirectRepository $redirectRepository,
+  ) {
+    parent::__construct($container, $logger, $router, $module_handler, $config_factory, $aliasManager);
+  }
 
   /**
    * {@inheritdoc}
@@ -42,52 +65,31 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
 
     // Find the redirected path. Bear in mind that we need to go through several
     // redirection levels before handing off to the route translator.
-    $entity_type_manager = $this->container->get('entity_type.manager');
-    $redirect_storage = $entity_type_manager->getStorage('redirect');
     $destination = parse_url($event->getPath(), PHP_URL_PATH);
     $original_query_string = parse_url($event->getPath(), PHP_URL_QUERY);
-    $traced_urls = [];
-    $redirect = NULL;
     $redirects_trace = [];
-    while (TRUE) {
-      $destination = $this->cleanSubdirInPath($destination, $event->getRequest());
-      // Find if there is a redirect for this path.
-      $results = $redirect_storage
-        ->getQuery()
-        ->accessCheck(TRUE)
-        // Redirects are stored without the leading slash :-(.
-        ->condition('redirect_source.path', ltrim($destination, '/'))
-        ->execute();
-      $rid = reset($results);
-      if (!$rid) {
-        break;
-      }
-      /** @var \Drupal\redirect\Entity\Redirect $redirect */
-      $redirect = $redirect_storage->load($rid);
-      $response->addCacheableDependency($redirect);
-      $uri = $redirect->get('redirect_redirect')->uri;
-      $url = Url::fromUri($uri)->toString(TRUE);
-      $redirects_trace[] = [
-        'from' => $this->makeRedirectUrl($destination, $original_query_string),
-        'to' => $this->makeRedirectUrl($url->getGeneratedUrl(), $original_query_string),
-        'status' => $redirect->getStatusCode(),
-      ];
-      $destination = $url->getGeneratedUrl();
+    $destination = $this->cleanSubdirInPath($destination, $event->getRequest());
 
-      // Detect infinite loops and break if there is one.
-      $infinite_loop = in_array($destination, array_map(function (GeneratedUrl $url) {
-        return $url->getGeneratedUrl();
-      }, $traced_urls));
-      // Accumulate all the URLs we go through to add the necessary cacheability
-      // metadata at the end.
-      $traced_urls[] = $url;
-      if ($infinite_loop) {
-        break;
-      }
-    }
+    $cacheable_metadata = new CacheableMetadata();
+    $redirect = $this->redirectRepository->findMatchingRedirect(
+      $destination,
+      UrlHelper::parse($event->getPath())['query'] ?? [],
+      $this->languageManager->getCurrentLanguage()->getId(),
+      $cacheable_metadata
+    );
     if (!$redirect) {
       return;
     }
+    $response->addCacheableDependency($cacheable_metadata);
+    $uri = $redirect->get('redirect_redirect')->uri;
+    $url = Url::fromUri($uri)->toString(TRUE);
+    $redirects_trace[] = [
+      'from' => $this->makeRedirectUrl($destination, $original_query_string),
+      'to' => $this->makeRedirectUrl($url->getGeneratedUrl(), $original_query_string),
+      'status' => $redirect->getStatusCode(),
+    ];
+    $destination = $url->getGeneratedUrl();
+
     // At this point we should be pointing to a system route or path alias.
     $event->setPath($this->makeRedirectUrl($destination, $original_query_string));
 
@@ -116,11 +118,7 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
       $content,
       ['redirect' => $redirects_trace]
     ));
-    // If there is a response object, add the cacheability metadata necessary
-    // for the traced URLs.
-    array_walk($traced_urls, function ($traced_url) use ($response) {
-      $response->addCacheableDependency($traced_url);
-    });
+
     $event->stopPropagation();
   }
 
