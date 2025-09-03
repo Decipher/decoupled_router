@@ -10,6 +10,8 @@ use Drupal\decoupled_router\PathTranslatorEvent;
 
 /**
  * Event subscriber that processes a path translation with the redirect info.
+ *
+ * @see \Drupal\decoupled_router\DecoupledRouterServiceProvider
  */
 class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
 
@@ -32,9 +34,7 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
       $this->logger->error('Unable to get the response object for the decoupled router event.');
       return;
     }
-    if (!$this->moduleHandler->moduleExists('redirect')) {
-      return;
-    }
+
     // Find the redirected path. Bear in mind that we need to go through several
     // redirection levels before handing off to the route translator.
     $entity_type_manager = $this->container->get('entity_type.manager');

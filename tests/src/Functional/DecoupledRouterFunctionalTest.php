@@ -199,6 +199,36 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   }
 
   /**
+   * Tests without redirect module installed.
+   */
+  public function testNoRedirectModule() {
+    $redirects = Redirect::loadMultiple();
+    \Drupal::entityTypeManager()->getStorage('redirect')->delete($redirects);
+    \Drupal::service('module_installer')->uninstall(['redirect']);
+    $this->rebuildAll();
+    $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'foobar',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(404);
+    $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'node--0',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+  }
+
+  /**
    * Test that unpublished content ist not available.
    */
   public function testUnpublishedContent() {
