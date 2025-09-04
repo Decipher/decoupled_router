@@ -14,5 +14,8 @@
     },
     "require-dev": {
         "drupal/redirect": "dev-1.x"
+    },
+    "conflict": {
+        "drupal/redirect": "<1.12"
     }
 }
