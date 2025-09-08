@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Module install file.
+ * Module install file for Decoupled Router module.
  */
 
 /**
@@ -26,4 +26,13 @@ function decoupled_router_requirements($phase) {
     }
   }
   return $requirements;
+}
+
+/**
+ * Creates the decoupled_router.settings configuration.
+ */
+function decoupled_router_update_20001(): void {
+  \Drupal::configFactory()->getEditable('decoupled_router.settings')
+    ->set('absolute_resolved_urls', TRUE)
+    ->save(TRUE);
 }

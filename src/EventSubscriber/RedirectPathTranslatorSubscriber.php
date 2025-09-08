@@ -105,11 +105,11 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
     elseif ($response->getStatusCode() === 404) {
       // We should return the redirect data.
       $response->setStatusCode(200);
-
+      $cacheable_metadata->addCacheableDependency($this->decoupledRouterConfig);
       $content = [
-        'resolved' => $redirect_url->setAbsolute()->toString(TRUE)->getGeneratedUrl(),
+        'resolved' => $redirect_url->setAbsolute($this->decoupledRouterConfig->get('absolute_resolved_urls'))->toString(TRUE)->getGeneratedUrl(),
         'isExternal' => FALSE,
-        'isHomePath' => $this->resolvedPathIsHomePath($redirect_url),
+        'isHomePath' => $this->resolvedPathIsHomePath($redirect_url, $cacheable_metadata),
       ];
     }
     else {
@@ -121,6 +121,8 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
       $content,
       ['redirect' => $redirects_trace]
     ));
+
+    $response->addCacheableDependency($cacheable_metadata);
 
     $event->stopPropagation();
   }

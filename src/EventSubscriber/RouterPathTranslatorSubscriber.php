@@ -5,6 +5,7 @@ namespace Drupal\decoupled_router\EventSubscriber;
 use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\Config\Config;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\ContentEntityType;
 use Drupal\Core\Entity\EntityInterface;
@@ -74,6 +75,11 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
   protected $aliasManager;
 
   /**
+   * The decoupled_router.settings config.
+   */
+  protected Config $decoupledRouterConfig;
+
+  /**
    * Determines if a message should be logged if an entity not found.
    */
   protected const LOG_ENTITY_NOT_FOUND = TRUE;
@@ -108,6 +114,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     $this->moduleHandler = $module_handler;
     $this->configFactory = $config_factory;
     $this->aliasManager = $aliasManager;
+    $this->decoupledRouterConfig = $config_factory->get('decoupled_router.settings');
   }
 
   /**
@@ -115,6 +122,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    */
   public function onPathTranslation(PathTranslatorEvent $event) {
     $response = $event->getResponse();
+    $cacheable_metadata = new CacheableMetadata();
     if (!$response instanceof CacheableJsonResponse) {
       $this->logger->error('Unable to get the response object for the decoupled router event.');
       return;
@@ -169,7 +177,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     }
 
     $entity_type_id = $entity->getEntityTypeId();
-    $canonical_url = NULL;
+
     try {
       $canonical_url = $entity->toUrl('canonical', ['absolute' => TRUE])->toString(TRUE);
     }
@@ -187,18 +195,17 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     $entity_param = $entity->id();
     $resolved_url = Url::fromRoute($match_info[RouteObjectInterface::ROUTE_NAME], [
       $route_parameter_entity_key => $entity_param,
-    ], ['absolute' => TRUE])->toString(TRUE);
+    ], ['absolute' => $this->decoupledRouterConfig->get('absolute_resolved_urls')]);
+
+    $resolved_generated_url = $resolved_url->toString(TRUE);
     $response->addCacheableDependency($canonical_url);
-    $response->addCacheableDependency($resolved_url);
-    $is_home_path = $this->resolvedPathIsHomePath($resolved_url->getGeneratedUrl());
-    $response->addCacheableDependency(
-      (new CacheableMetadata())->setCacheContexts(['url.path.is_front'])
-    );
+    $response->addCacheableDependency($resolved_generated_url);
+    $is_home_path = $this->resolvedPathIsHomePath($resolved_url, $cacheable_metadata);
 
     $label_accessible = $entity->access('view label', NULL, TRUE);
     $response->addCacheableDependency($label_accessible);
     $output = [
-      'resolved' => $resolved_url->getGeneratedUrl(),
+      'resolved' => $resolved_generated_url->getGeneratedUrl(),
       'isExternal' => FALSE,
       'isHomePath' => $is_home_path,
       'entity' => [
@@ -252,6 +259,8 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       ];
     }
     $response->addCacheableDependency($entity);
+    $response->addCacheableDependency($this->decoupledRouterConfig);
+    $response->addCacheableDependency($cacheable_metadata);
     $response->setStatusCode(200);
     $response->setData($output);
 
@@ -386,15 +395,31 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
   /**
    * Checks if the resolved path is the home path.
    *
-   * @param string $resolved_url
+   * @param string|\Drupal\Core\Url $resolved_url
    *   The resolved url from the request.
+   * @param \Drupal\Core\Cache\CacheableMetadata|null $cacheable_metadata
+   *   The cacheable metadata that will be added to the response.
    *
    * @return bool
    *   True if the resolved path is the home path, false otherwise.
    */
-  protected function resolvedPathIsHomePath($resolved_url) {
+  protected function resolvedPathIsHomePath(string|Url $resolved_url, ?CacheableMetadata $cacheable_metadata = NULL): bool {
+    $config = $this->configFactory->get('system.site');
+    if ($cacheable_metadata) {
+      $cacheable_metadata->addCacheableDependency($config);
+    }
+    else {
+      @trigger_error('The $cacheable_metadata not being an instance of \Drupal\Core\Cache\CacheableMetadata is deprecated in decoupled_router:2.0.6 and is removed in decoupled_router:3.0.0. Pass in a \Drupal\Core\Cache\CacheableMetadata object instead. See https://www.drupal.org/node/3543536', E_USER_DEPRECATED);
+    }
     $home_path = $this->configFactory->get('system.site')->get('page.front');
-    $home_url = Url::fromUserInput($home_path, ['absolute' => TRUE])->toString(TRUE)->getGeneratedUrl();
+    if ($resolved_url instanceof Url) {
+      $home_url = Url::fromUserInput($home_path)->setAbsolute((bool) $resolved_url->getOption('absolute'))->toString();
+      $resolved_url = $resolved_url->toString();
+    }
+    else {
+      @trigger_error('The $resolved_url not being an instance of \Drupal\Core\Url is deprecated in decoupled_router:2.0.6 and is removed in decoupled_router:3.0.0. Pass in a Url object instead. See https://www.drupal.org/node/3543536', E_USER_DEPRECATED);
+      $home_url = Url::fromUserInput($home_path, ['absolute' => $this->decoupledRouterConfig->get('absolute_resolved_urls')])->toString(TRUE)->getGeneratedUrl();
+    }
 
     return $resolved_url === $home_url;
   }

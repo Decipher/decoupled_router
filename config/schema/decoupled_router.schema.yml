@@ -1,0 +1,9 @@
+decoupled_router.settings:
+  type: config_object
+  label: 'Decoupled router settings'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    absolute_resolved_urls:
+      type: boolean
+      label: 'Use absolute links for resolved URLs in responses'

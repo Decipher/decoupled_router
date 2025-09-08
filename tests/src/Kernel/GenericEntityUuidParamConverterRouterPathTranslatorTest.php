@@ -66,7 +66,7 @@ final class GenericEntityUuidParamConverterRouterPathTranslatorTest extends Kern
    */
   protected function setUp(): void {
     parent::setUp();
-    $this->installConfig(['user', 'system']);
+    $this->installConfig(['user', 'system', 'decoupled_router']);
     $this->installEntitySchema('user');
     $this->container->get('entity_type.manager')->getStorage('user')
       ->create([

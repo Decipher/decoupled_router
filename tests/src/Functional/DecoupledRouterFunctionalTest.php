@@ -144,6 +144,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     // This is not build with data providers to avoid rebuilding the environment
     // each test.
     $make_assertions = function ($path, DecoupledRouterFunctionalTest $test) {
+      $path = $test->addBasePath($path);
       $res = $test->drupalGet(
         Url::fromRoute('decoupled_router.path_translation'),
         [
@@ -161,16 +162,14 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       $test->assertStringEndsWith('/jsonapi/node/article/' . $test->nodes[0]->uuid(), $output['jsonapi']['individual']);
     };
 
-    $base_path = $this->getBasePath();
-
     // Test cases:
     $test_cases = [
       // 1. Test negotiation by system path for /node/1 -> /node--0.
-      $base_path . '/node/1',
+      'node/1',
       // 2. Test negotiation by alias for /node--0.
-      $base_path . '/node--0',
+      'node--0',
       // 3. Test negotiation by multiple redirects for /bar -> /foo -> /node--0.
-      $base_path . '/bar',
+      'bar',
     ];
     array_walk($test_cases, function ($test_case) use ($make_assertions) {
       $make_assertions($test_case, $this);
@@ -205,6 +204,81 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'isExternal' => TRUE,
     ];
     $this->assertEquals($expected, $output);
+
+    // Ensure external redirects are still absolute URLs.
+    $this->config('decoupled_router.settings')->set('absolute_resolved_urls', FALSE)->save();
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'foobar',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $this->assertEquals($expected, $output);
+  }
+
+  /**
+   * Tests decoupled_router.settings:absolute.
+   */
+  public function testRelativeAndAbsolutePaths() {
+    $node = $this->nodes[0];
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/node--0',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+
+    $expected = [
+      'resolved' => $this->buildUrl('/node--0'),
+      'isExternal' => FALSE,
+      'isHomePath' => FALSE,
+      'entity' => [
+        'canonical' => $this->buildUrl('/node--0'),
+        'type' => 'node',
+        'bundle' => 'article',
+        'id' => $node->id(),
+        'uuid' => $node->uuid(),
+      ],
+      'label' => $node->label(),
+      'jsonapi' => [
+        'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
+        'resourceName' => 'node--article',
+        'pathPrefix' => 'jsonapi',
+        'basePath' => '/jsonapi',
+        'entryPoint' => $this->buildUrl('/jsonapi'),
+      ],
+      'meta' => [
+        'deprecated' => [
+          'jsonapi.pathPrefix' => 'This property has been deprecated and will be removed in the next version of Decoupled Router. Use basePath instead.',
+        ],
+      ],
+    ];
+    $this->assertSame($expected, $output);
+
+    $this->config('decoupled_router.settings')->set('absolute_resolved_urls', FALSE)->save();
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/node--0',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $expected['resolved'] = $this->addBasePath('node--0');
+    $this->assertSame($expected, $output);
   }
 
   /**
@@ -224,7 +298,9 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     $this->assertSession()->statusCodeEquals(200);
     // Ensure all redirects involved are in the cache tags for the response.
     $this->assertCacheTags([
+      'config:decoupled_router.settings',
       'config:redirect.settings',
+      'config:system.site',
       'node:1',
       'redirect:1',
       'redirect:2',
@@ -237,10 +313,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'redirect' => [
         [
           'from' => '/chain',
-          'to' => '/' . implode('/', array_filter([
-            trim($this->getBasePath(), '/'),
-            'node--0',
-          ])),
+          'to' => $this->addBasePath('node--0'),
           'status' => '301',
         ],
       ],
@@ -383,10 +456,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'redirect' => [
         [
           'from' => '/unp',
-          'to' => '/' . implode('/', array_filter([
-            trim($this->getBasePath(), '/'),
-            'node--unpublished',
-          ])),
+          'to' => $this->addBasePath('node--unpublished'),
           'status' => '301',
         ],
       ],
@@ -490,15 +560,64 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'redirect' => [
         [
           'from' => '/non-entity',
-          'to' => '/' . implode('/', array_filter([
-            trim($this->getBasePath(), '/'),
-            'node',
-          ])),
+          'to' => $this->addBasePath('node'),
           'status' => '301',
         ],
       ],
     ];
     $this->assertSame($expected, $output);
+
+    // Make /node the front page.
+    \Drupal::configFactory()->getEditable('system.site')
+      ->set('page.front', '/node')
+      ->save();
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'non-entity',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $expected['isHomePath'] = TRUE;
+    $this->assertSame($expected, $output);
+
+    // Test with relative resolved URLs.
+    $this->config('decoupled_router.settings')->set('absolute_resolved_urls', FALSE)->save();
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'non-entity',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $expected['resolved'] = $this->addBasePath('/node');
+    $this->assertSame($expected, $output);
+  }
+
+  /**
+   * Adds the base path to a path.
+   *
+   * This helps testing on Drupal gitlab where tests are run on a subfolder.
+   *
+   * @param string $path
+   *   The path to add the base path to.
+   *
+   * @return string
+   *   The path with the base path added.
+   */
+  private function addBasePath(string $path): string {
+    return '/' . implode('/', array_filter([
+      trim($this->getBasePath(), '/'),
+      ltrim($path, '/'),
+    ]));
   }
 
   /**
@@ -633,7 +752,8 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
         getenv('SIMPLETEST_BASE_URL') ?: getenv('WEB_HOST')
       ) ?: self::DRUPAL_CI_BASE_URL
     );
-    return empty($parts['path']) ? '/' : $parts['path'];
+    $path = empty($parts['path']) ? '' : $parts['path'];
+    return rtrim($path, '/') . '/';
   }
 
 }
