@@ -64,8 +64,9 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
 
     // Find the redirected path. Bear in mind that we need to go through several
     // redirection levels before handing off to the route translator.
-    $request_query = UrlHelper::parse($event->getPath())['query'];
-    $source_path = $this->cleanSubdirInPath(parse_url($event->getPath(), PHP_URL_PATH), $event->getRequest());
+    $original_parsed_url = UrlHelper::parse($event->getPath());
+    $request_query = $original_parsed_url['query'];
+    $source_path = $this->cleanSubdirInPath($original_parsed_url['path'], $event->getRequest());
 
     $cacheable_metadata = new CacheableMetadata();
     $cacheable_metadata->addCacheableDependency($this->configFactory->get('redirect.settings'));
@@ -87,6 +88,16 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
     }
 
     $redirect_url_string = $redirect_url->toString();
+
+    // Preserve the fragment as per RFC 7231, see
+    // https://www.rfc-editor.org/rfc/rfc7231#section-7.1.2. Only replace the
+    // fragment if the redirect does not have a fragment. Redirects store
+    // fragments as part of the path so we need to parse the URI.
+    if (isset($original_parsed_url['fragment']) && empty(UrlHelper::parse($redirect_url_string)['fragment'])) {
+      $redirect_url->setOption('fragment', $original_parsed_url['fragment']);
+      $redirect_url_string = $redirect_url->toString();
+    }
+
     $redirects_trace[] = [
       'from' => $event->getPath(),
       'to' => $redirect_url_string,

@@ -219,6 +219,68 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     $this->assertSession()->statusCodeEquals(200);
     $output = Json::decode($res);
     $this->assertEquals($expected, $output);
+
+    // Test with fragment.
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'foobar#anchor',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $expected['resolved'] = 'http://example.com/foobar#anchor';
+    $expected['redirect'][0]['from'] = '/foobar#anchor';
+    $expected['redirect'][0]['to'] = 'http://example.com/foobar#anchor';
+    $this->assertEquals($expected, $output);
+
+    // Test redirect with anchor.
+    $redirect = Redirect::create(['status_code' => '301']);
+    $redirect->setSource('/foobar-anchor');
+    $redirect->setRedirect('http://example.com/foobar#another-anchor');
+    $redirect->save();
+
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'foobar-anchor',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $expected = [
+      'resolved' => 'http://example.com/foobar#another-anchor',
+      'isHomePath' => FALSE,
+      'redirect' => [
+        [
+          'from' => '/foobar-anchor',
+          'to' => 'http://example.com/foobar#another-anchor',
+          'status' => '301',
+        ],
+      ],
+      'isExternal' => TRUE,
+    ];
+    $this->assertEquals($expected, $output);
+
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'foobar-anchor#anchor',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $expected['redirect'][0]['from'] = '/foobar-anchor#anchor';
+    $this->assertEquals($expected, $output);
   }
 
   /**
@@ -279,6 +341,43 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     $output = Json::decode($res);
     $expected['resolved'] = $this->addBasePath('node--0');
     $this->assertSame($expected, $output);
+  }
+
+  /**
+   * Tests fragment handing on redirects to entities.
+   */
+  public function testFragmentRedirectOnEntity() {
+    $redirect = Redirect::create(['status_code' => '301']);
+    $redirect->setSource('/foo-anchor');
+    $redirect->setRedirect('/node--0#anchor');
+    $redirect->setLanguage(Language::LANGCODE_NOT_SPECIFIED);
+    $redirect->save();
+
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/foo#test',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $this->assertEquals($this->buildUrl('/node--0', ['fragment' => 'test']), $output['resolved']);
+
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/foo-anchor#test',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $this->assertEquals($this->buildUrl('/node--0', ['fragment' => 'anchor']), $output['resolved']);
   }
 
   /**
