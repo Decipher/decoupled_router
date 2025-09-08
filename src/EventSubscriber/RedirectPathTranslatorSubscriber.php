@@ -9,7 +9,6 @@ use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
-use Drupal\Core\Url;
 use Drupal\decoupled_router\PathTranslatorEvent;
 use Drupal\path_alias\AliasManagerInterface;
 use Drupal\redirect\RedirectRepository;
@@ -65,33 +64,37 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
 
     // Find the redirected path. Bear in mind that we need to go through several
     // redirection levels before handing off to the route translator.
-    $destination = parse_url($event->getPath(), PHP_URL_PATH);
-    $original_query_string = parse_url($event->getPath(), PHP_URL_QUERY);
-    $redirects_trace = [];
-    $destination = $this->cleanSubdirInPath($destination, $event->getRequest());
+    $request_query = UrlHelper::parse($event->getPath())['query'];
+    $source_path = $this->cleanSubdirInPath(parse_url($event->getPath(), PHP_URL_PATH), $event->getRequest());
 
     $cacheable_metadata = new CacheableMetadata();
+    $cacheable_metadata->addCacheableDependency($this->configFactory->get('redirect.settings'));
+
     $redirect = $this->redirectRepository->findMatchingRedirect(
-      $destination,
-      UrlHelper::parse($event->getPath())['query'] ?? [],
+      $source_path,
+      $request_query,
       $this->languageManager->getCurrentLanguage()->getId(),
       $cacheable_metadata
     );
     if (!$redirect) {
       return;
     }
+
     $response->addCacheableDependency($cacheable_metadata);
-    $uri = $redirect->get('redirect_redirect')->uri;
-    $url = Url::fromUri($uri)->toString(TRUE);
+    $redirect_url = $redirect->getRedirectUrl();
+    if ($this->configFactory->get('redirect.settings')->get('passthrough_querystring')) {
+      $redirect_url->setOption('query', (array) $redirect_url->getOption('query') + $request_query);
+    }
+
+    $redirect_url_string = $redirect_url->toString();
     $redirects_trace[] = [
-      'from' => $this->makeRedirectUrl($destination, $original_query_string),
-      'to' => $this->makeRedirectUrl($url->getGeneratedUrl(), $original_query_string),
+      'from' => $event->getPath(),
+      'to' => $redirect_url_string,
       'status' => $redirect->getStatusCode(),
     ];
-    $destination = $url->getGeneratedUrl();
 
     // At this point we should be pointing to a system route or path alias.
-    $event->setPath($this->makeRedirectUrl($destination, $original_query_string));
+    $event->setPath($redirect_url_string);
 
     // Now call the route level.
     parent::onPathTranslation($event);
@@ -102,9 +105,9 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
     elseif ($response->getStatusCode() === 404) {
       // We should return the redirect data.
       $response->setStatusCode(200);
-      $redirect_url = $redirect->getRedirectUrl()->setAbsolute(TRUE)->toString();
+
       $content = [
-        'resolved' => $this->makeRedirectUrl($redirect_url, $original_query_string),
+        'resolved' => $redirect_url->setAbsolute()->toString(TRUE)->getGeneratedUrl(),
         'isExternal' => FALSE,
         'isHomePath' => $this->resolvedPathIsHomePath($redirect_url),
       ];
@@ -120,24 +123,6 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
     ));
 
     $event->stopPropagation();
-  }
-
-  /**
-   * Generates URL for the redirect, based on redirect module configurations.
-   *
-   * @param string $path
-   *   URL to redirect to.
-   * @param string $query
-   *   Original query string on the requested path.
-   *
-   * @return string
-   *   Redirect URL to use.
-   */
-  private function makeRedirectUrl($path, $query) {
-    return $query && $this->configFactory->get('redirect.settings')
-      ->get('passthrough_querystring')
-      ? "{$path}?{$query}"
-      : $path;
   }
 
 }

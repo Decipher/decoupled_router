@@ -223,7 +223,13 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     );
     $this->assertSession()->statusCodeEquals(200);
     // Ensure all redirects involved are in the cache tags for the response.
-    $this->assertCacheTags(['node:1', 'redirect:1', 'redirect:2', 'redirect:3']);
+    $this->assertCacheTags([
+      'config:redirect.settings',
+      'node:1',
+      'redirect:1',
+      'redirect:2',
+      'redirect:3',
+    ]);
     $output = Json::decode($res);
     $expected = [
       'resolved' => $this->buildUrl('/node--0'),
@@ -493,6 +499,126 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       ],
     ];
     $this->assertSame($expected, $output);
+  }
+
+  /**
+   * Tests decoupled router with non-entity routes.
+   */
+  public function testRedirectQueryStringAndFragment() {
+    // Create a redirect to user login.
+    $redirect = Redirect::create(['status_code' => '301']);
+    $redirect->setSource('/funky-login');
+    $redirect->setRedirect('/user/login');
+    $redirect->setLanguage(Language::LANGCODE_NOT_SPECIFIED);
+    $redirect->save();
+    $this->rebuildAll();
+
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'funky-login',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    // Accessing the non-entity route should 404 because the decoupled router is
+    // about getting entity and redirect info.
+    $this->assertSession()->statusCodeEquals(200);
+
+    $output = Json::decode($res);
+    $expected_url = $this->buildUrl('/user/login');
+    $this->assertSame($expected_url, $output['resolved']);
+
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'funky-login?foo=bar',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    // Accessing the non-entity route should 404 because the decoupled router is
+    // about getting entity and redirect info.
+    $this->assertSession()->statusCodeEquals(200);
+
+    $output = Json::decode($res);
+    $expected_url = $this->buildUrl('/user/login', ['query' => ['foo' => 'bar']]);
+
+    $this->assertSame($expected_url, $output['resolved']);
+
+    $this->config('redirect.settings')->set('passthrough_querystring', FALSE)->save();
+
+    $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'funky-login?foo=bar',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    // Accessing the non-entity route should 404 because there is no redirect
+    // for funky-login?foo=bar.
+    $this->assertSession()->statusCodeEquals(404);
+
+    $redirect->setSource('/funky-login', ['foo' => 'bar']);
+    $redirect->save();
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'funky-login?foo=bar',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    // Accessing the non-entity route should 404 because there is no redirect
+    // for funky-login?foo=bar.
+    $this->assertSession()->statusCodeEquals(200);
+
+    $output = Json::decode($res);
+    $expected_url = $this->buildUrl('/user/login');
+
+    $this->assertSame($expected_url, $output['resolved']);
+
+    $this->config('redirect.settings')->set('passthrough_querystring', TRUE)->save();
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'funky-login?foo=bar',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    // Accessing the non-entity route should 404 because there is no redirect
+    // for funky-login?foo=bar.
+    $this->assertSession()->statusCodeEquals(200);
+
+    $output = Json::decode($res);
+    $expected_url = $this->buildUrl('/user/login', ['query' => ['foo' => 'bar']]);
+
+    $this->assertSame($expected_url, $output['resolved']);
+
+    $redirect->setSource('/funky-login');
+    $redirect->setRedirect('/user/login', ['foo' => 'redirect']);
+    $redirect->save();
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'funky-login?foo=bar&bar=baz',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+
+    $output = Json::decode($res);
+    $expected_url = $this->buildUrl('/user/login', ['query' => ['foo' => 'redirect', 'bar' => 'baz']]);
+    $this->assertSame($expected_url, $output['resolved']);
   }
 
   /**
