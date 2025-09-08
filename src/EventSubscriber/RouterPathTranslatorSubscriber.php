@@ -129,6 +129,11 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     }
     $path = $this->cleanSubdirInPath($event->getPath(), $event->getRequest());
 
+    // Preserve the original query string and fragment if any.
+    $resolved_url_options = UrlHelper::parse($path);
+    unset($resolved_url_options['path']);
+    $resolved_url_options['absolute'] = $this->decoupledRouterConfig->get('absolute_resolved_urls');
+
     // If URL is external, we won't perform checks for content in Drupal,
     // but assume that it's working.
     if (UrlHelper::isExternal($path)) {
@@ -195,7 +200,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     $entity_param = $entity->id();
     $resolved_url = Url::fromRoute($match_info[RouteObjectInterface::ROUTE_NAME], [
       $route_parameter_entity_key => $entity_param,
-    ], ['absolute' => $this->decoupledRouterConfig->get('absolute_resolved_urls')]);
+    ], $resolved_url_options);
 
     $resolved_generated_url = $resolved_url->toString(TRUE);
     $response->addCacheableDependency($canonical_url);

@@ -741,6 +741,39 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   }
 
   /**
+   * Tests query string and fragment handling on entities.
+   */
+  public function testQueryStringsAndFragmentsOnEntities() {
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'node/1?foo=bar#fragment',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $expected_url = $this->buildUrl('/node--0', ['fragment' => 'fragment', 'query' => ['foo' => 'bar']]);
+    $this->assertSame($expected_url, $output['resolved']);
+
+    // Test using an aliased path.
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => 'node--0?foo=bar#fragment',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $this->assertSession()->statusCodeEquals(200);
+    $output = Json::decode($res);
+    $this->assertSame($expected_url, $output['resolved']);
+  }
+
+  /**
    * Computes the base path under which the Drupal managed URLs are available.
    *
    * @return string
