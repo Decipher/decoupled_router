@@ -11,6 +11,7 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\ContentEntityType;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityMalformedException;
+use Drupal\Core\Entity\TranslatableInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -42,6 +43,13 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    * Determines if a message should be logged if an entity not found.
    */
   protected const LOG_ENTITY_NOT_FOUND = TRUE;
+
+  /**
+   * The langcode if added as a prefix to the path.
+   *
+   * @var string
+   */
+  protected $langcode;
 
   /**
    * RouterPathTranslatorSubscriber constructor.
@@ -77,6 +85,11 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     $response = $event->getResponse();
     $cacheable_metadata = new CacheableMetadata();
     $path = $this->cleanSubdirInPath($event->getPath(), $event->getRequest());
+
+    // Get system path from alias if applicable.
+    if ($this->container->get('language_manager')->isMultilingual()) {
+      $path = $this->getPathFromAlias($path);
+    }
 
     // Preserve the original query string and fragment if any.
     $resolved_url_options = UrlHelper::parse($path);
@@ -133,6 +146,17 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
 
     $entity_type_id = $entity->getEntityTypeId();
 
+    // Get entity translation.
+    if (!empty($this->langcode)) {
+      if ($entity->hasTranslation($this->langcode)) {
+        $entity = $entity->getTranslation($this->langcode);
+      }
+      else {
+        $entity = $this->container->get('entity.repository')->getTranslationFromContext($entity, $this->langcode);
+      }
+    }
+    $resolved_url_options['language'] = $entity->language();
+
     try {
       $canonical_url = $entity->toUrl('canonical', ['absolute' => TRUE])->toString(TRUE);
     }
@@ -163,6 +187,11 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     $is_home_path = $this->resolvedPathIsHomePath($resolved_url, $cacheable_metadata);
 
     $label_accessible = $entity->access('view label', NULL, TRUE);
+
+    $langcode = NULL;
+    if ($entity instanceof TranslatableInterface) {
+      $langcode = $entity->language()->getId();
+    }
     $response->addCacheableDependency($label_accessible);
     $output = [
       'resolved' => $resolved_generated_url->getGeneratedUrl(),
@@ -176,6 +205,11 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         'uuid' => $entity->uuid(),
       ],
     ];
+
+    // Only add langcode if available.
+    if ($langcode) {
+      $output['langcode'] = $langcode;
+    }
     if ($label_accessible->isAllowed()) {
       $output['label'] = $entity->label();
     }
@@ -400,6 +434,35 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     }
 
     return $resolved_url === $home_url;
+  }
+
+  /**
+   * Convert an alias to its source path.
+   *
+   * This is a workaround for a bug where matcher fails on aliases prefixed by
+   * a language prefix when it doesn't match the negotiated language.
+   *
+   * @param string $path
+   *   The input path string.
+   *
+   * @return string
+   *   The output path string.
+   */
+  protected function getPathFromAlias(string $path): string {
+    $config = $this->configFactory->get('language.negotiation')->get('url');
+    $language_negotiation_url = $this->container->get('language_manager')->getNegotiator()
+      ->getNegotiationMethodInstance('language-url');
+    $router_request = Request::create($path);
+    $langcode = $language_negotiation_url->getLangcode($router_request);
+    $prefix = $config['prefixes'][$langcode] ?? NULL;
+    if ($prefix && ($path == "/$prefix" || str_starts_with($path, "/$prefix/"))) {
+      $this->langcode = $langcode;
+      $path_without_prefix = $language_negotiation_url->processInbound($path, $router_request);
+      $path = $this->aliasManager->getPathByAlias($path_without_prefix, $langcode);
+      $path = "/$prefix" . $path;
+    }
+
+    return $path;
   }
 
 }
