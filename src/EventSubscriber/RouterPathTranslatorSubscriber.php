@@ -146,9 +146,9 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
 
     $entity_type_id = $entity->getEntityTypeId();
 
-    // Get entity translation.
+    // Get entity translation if applicable.
     if (!empty($this->langcode)) {
-      if ($entity->hasTranslation($this->langcode)) {
+      if ($entity instanceof TranslatableInterface && $entity->hasTranslation($this->langcode)) {
         $entity = $entity->getTranslation($this->langcode);
       }
       else {
@@ -187,11 +187,6 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     $is_home_path = $this->resolvedPathIsHomePath($resolved_url, $cacheable_metadata);
 
     $label_accessible = $entity->access('view label', NULL, TRUE);
-
-    $langcode = NULL;
-    if ($entity instanceof TranslatableInterface) {
-      $langcode = $entity->language()->getId();
-    }
     $response->addCacheableDependency($label_accessible);
     $output = [
       'resolved' => $resolved_generated_url->getGeneratedUrl(),
@@ -207,9 +202,10 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     ];
 
     // Only add langcode if available.
-    if ($langcode) {
-      $output['langcode'] = $langcode;
+    if ($entity instanceof TranslatableInterface) {
+      $output['langcode'] = $entity->language()->getId();
     }
+
     if ($label_accessible->isAllowed()) {
       $output['label'] = $entity->label();
     }
@@ -450,7 +446,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    */
   protected function getPathFromAlias(string $path): string {
     $config = $this->configFactory->get('language.negotiation')->get('url');
-    $language_negotiation_url = $this->container->get('language_manager')->getNegotiator()
+    $language_negotiation_url = $this->container->get('language_negotiator')
       ->getNegotiationMethodInstance('language-url');
     $router_request = Request::create($path);
     $langcode = $language_negotiation_url->getLangcode($router_request);

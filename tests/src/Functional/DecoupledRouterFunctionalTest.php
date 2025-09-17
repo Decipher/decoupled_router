@@ -319,6 +319,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
         'id' => $node->id(),
         'uuid' => $node->uuid(),
       ],
+      'langcode' => 'en',
       'label' => $node->label(),
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
@@ -432,6 +433,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
         'id' => $node->id(),
         'uuid' => $node->uuid(),
       ],
+      'langcode' => 'en',
       'label' => $node->label(),
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
@@ -547,6 +549,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
         'id' => $node->id(),
         'uuid' => $node->uuid(),
       ],
+      'langcode' => 'en',
       'label' => $node->label(),
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
