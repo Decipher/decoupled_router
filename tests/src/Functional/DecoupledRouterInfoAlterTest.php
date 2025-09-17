@@ -113,6 +113,7 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
         ],
       ],
       'isExternal' => FALSE,
+      'langcode' => 'en',
     ];
     $this->assertEquals($expected, $output);
 
