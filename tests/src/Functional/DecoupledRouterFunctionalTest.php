@@ -324,8 +324,8 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
         'resourceName' => 'node--article',
-        'pathPrefix' => 'jsonapi',
-        'basePath' => '/jsonapi',
+        'pathPrefix' => 'web/jsonapi',
+        'basePath' => '/web/jsonapi',
         'entryPoint' => $this->buildUrl('/jsonapi'),
       ],
       'meta' => [
@@ -438,8 +438,8 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
         'resourceName' => 'node--article',
-        'pathPrefix' => 'jsonapi',
-        'basePath' => '/jsonapi',
+        'pathPrefix' => 'web/jsonapi',
+        'basePath' => '/web/jsonapi',
         'entryPoint' => $this->buildUrl('/jsonapi'),
       ],
       'meta' => [
@@ -554,8 +554,8 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
         'resourceName' => 'node--article',
-        'pathPrefix' => 'jsonapi',
-        'basePath' => '/jsonapi',
+        'pathPrefix' => 'web/jsonapi',
+        'basePath' => '/web/jsonapi',
         'entryPoint' => $this->buildUrl('/jsonapi'),
       ],
       'meta' => [
