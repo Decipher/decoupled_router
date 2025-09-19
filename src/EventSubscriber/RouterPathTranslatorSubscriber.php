@@ -221,23 +221,37 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       $rt_repo = $this->container->get('jsonapi.resource_type.repository');
       $rt = $rt_repo->get($entity_type_id, $entity->bundle());
       $type_name = $rt->getTypeName();
-      $jsonapi_base_path = $this->container->getParameter('jsonapi.base_path');
-      $entry_point_url = Url::fromRoute('jsonapi.resource_list', [], ['absolute' => TRUE])->toString(TRUE);
+      $jsonapi_base_path = Url::fromRoute(
+        'jsonapi.resource_list',
+        [],
+        ['language' => $entity->language()]
+      )->toString(TRUE);
+      $entry_point_url = Url::fromRoute(
+        'jsonapi.resource_list',
+        [],
+        [
+          'absolute' => TRUE,
+          'language' => $entity->language(),
+        ]
+      )->toString(TRUE);
       $route_name = sprintf('jsonapi.%s.individual', $type_name);
       $individual = Url::fromRoute(
         $route_name,
         [
           static::getEntityRouteParameterName($route_name, $entity_type_id) => $entity->uuid(),
         ],
-        ['absolute' => TRUE]
+        [
+          'absolute' => TRUE,
+          'language' => $entity->language(),
+        ]
       )->toString(TRUE);
       $response->addCacheableDependency($entry_point_url);
       $response->addCacheableDependency($individual);
       $output['jsonapi'] = [
         'individual' => $individual->getGeneratedUrl(),
         'resourceName' => $type_name,
-        'pathPrefix' => trim($jsonapi_base_path, '/'),
-        'basePath' => $jsonapi_base_path,
+        'pathPrefix' => trim($jsonapi_base_path->getGeneratedUrl(), '/'),
+        'basePath' => $jsonapi_base_path->getGeneratedUrl(),
         'entryPoint' => $entry_point_url->getGeneratedUrl(),
       ];
       $output['meta'] = [
