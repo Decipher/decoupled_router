@@ -96,6 +96,7 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
         'bundle' => 'article',
         'id' => $node->id(),
         'uuid' => $node->uuid(),
+        'langcode' => 'en',
         // Result of implementing the hook_decoupled_router_info_alter.
         'owner' => $node->getOwner()->uuid(),
       ],
@@ -113,7 +114,6 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
         ],
       ],
       'isExternal' => FALSE,
-      'langcode' => 'en',
     ];
     $this->assertEquals($expected, $output);
 

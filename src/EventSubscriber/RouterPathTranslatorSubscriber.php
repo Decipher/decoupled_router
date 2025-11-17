@@ -203,7 +203,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
 
     // Only add langcode if available.
     if ($entity instanceof TranslatableInterface) {
-      $output['langcode'] = $entity->language()->getId();
+      $output['entity']['langcode'] = $entity->language()->getId();
     }
 
     if ($label_accessible->isAllowed()) {
