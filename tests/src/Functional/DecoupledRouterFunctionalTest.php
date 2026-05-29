@@ -898,4 +898,79 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     return rtrim($path, '/') . '/';
   }
 
+   /**
+   * Test that published node with unpublished translation is accessible.
+   */
+  public function testPublishedContentWithUnpublishedTranslation() {
+    $german = ConfigurableLanguage::createFromLangcode('de');
+    $german->save();
+    
+    // Create the published node.
+    $values = [
+      'uid' => ['target_id' => $this->user->id()],
+      'type' => 'article',
+      'path' => '/node--article',
+      'title' => 'Published Article',
+      'langcode' => 'en',
+      'status' => NodeInterface::PUBLISHED,
+    ];
+    $node = $this->createNode($values);
+    
+    // Test access to the published node.
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/node--article',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $output = Json::decode($res);
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertEquals($node->uuid(), $output['entity']['uuid']);
+    $this->assertEquals('en', $output['entity']['langcode']);
+
+    // Create the unpublished German translation.
+    $node->addTranslation('de', [
+      'title' => 'Veröffentlichter Artikel',
+      'status' => NodeInterface::NOT_PUBLISHED,
+    ])->save();
+    
+    // Test access to the original published node.
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/node--article',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $output = Json::decode($res);
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertEquals($node->uuid(), $output['entity']['uuid']);
+    $this->assertFalse($output['isHomePath']);
+    
+    // Test access to the unpublished German translation.
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/de/node--article',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $output = Json::decode($res);
+    $this->assertSession()->statusCodeEquals(403);
+    $this->assertEquals(
+      [
+        'message' => 'Access denied for entity.',
+        'details' => 'This user does not have access to view the resolved entity. Please authenticate and try again.',
+      ],
+      $output
+    );
+  }
+
 }
