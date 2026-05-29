@@ -130,6 +130,18 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       }
       return;
     }
+
+    // Get entity translation if applicable.
+    if (!empty($this->langcode)) {
+      if ($entity instanceof TranslatableInterface && $entity->hasTranslation($this->langcode)) {
+        $entity = $entity->getTranslation($this->langcode);
+      }
+      else {
+        $entity = $this->container->get('entity.repository')->getTranslationFromContext($entity, $this->langcode);
+      }
+    }
+    $resolved_url_options['language'] = $entity->language();
+    
     $response->addCacheableDependency($entity);
     if ($entity->getEntityType() instanceof ContentEntityType) {
       $can_view = $entity->access('view', NULL, TRUE);
@@ -145,17 +157,6 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     }
 
     $entity_type_id = $entity->getEntityTypeId();
-
-    // Get entity translation if applicable.
-    if (!empty($this->langcode)) {
-      if ($entity instanceof TranslatableInterface && $entity->hasTranslation($this->langcode)) {
-        $entity = $entity->getTranslation($this->langcode);
-      }
-      else {
-        $entity = $this->container->get('entity.repository')->getTranslationFromContext($entity, $this->langcode);
-      }
-    }
-    $resolved_url_options['language'] = $entity->language();
 
     try {
       $canonical_url = $entity->toUrl('canonical', ['absolute' => TRUE])->toString(TRUE);
