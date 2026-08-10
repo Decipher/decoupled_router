@@ -5,10 +5,15 @@
  * Module install file for Decoupled Router module.
  */
 
+declare(strict_types=1);
+
+use Drupal\Component\Utility\DeprecationHelper;
+use Drupal\Core\Extension\Requirement\RequirementSeverity;
+
 /**
  * Implements hook_requirements().
  */
-function decoupled_router_requirements($phase) {
+function decoupled_router_requirements($phase): array {
   $requirements = [];
   if (\Drupal::moduleHandler()->moduleExists('redirect')) {
     $version = \Drupal::service('extension.list.module')->get('redirect')->info['version'];
@@ -19,7 +24,7 @@ function decoupled_router_requirements($phase) {
       if (version_compare($version, '1.12', '<')) {
         $requirements['decoupled_router_redirect'] = [
           'title' => t('Decoupled router - Redirect compatibility'),
-          'severity' => REQUIREMENT_ERROR,
+          'severity' => DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.2.0', fn(): RequirementSeverity => RequirementSeverity::Error, fn() => REQUIREMENT_ERROR),
           'description' => t('The Redirect module must be version 1.12 or greater.'),
         ];
       }
@@ -33,6 +38,5 @@ function decoupled_router_requirements($phase) {
  */
 function decoupled_router_update_20001(): void {
   \Drupal::configFactory()->getEditable('decoupled_router.settings')
-    ->set('absolute_resolved_urls', TRUE)
-    ->save(TRUE);
+    ->set('absolute_resolved_urls', TRUE)->save();
 }

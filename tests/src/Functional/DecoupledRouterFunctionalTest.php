@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\Tests\decoupled_router\Functional;
 
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Language\Language;
 use Drupal\Core\Url;
@@ -16,6 +20,8 @@ use Drupal\Tests\system\Functional\Cache\AssertPageCacheContextsAndTagsTrait;
  *
  * @group decoupled_router
  */
+#[Group('decoupled_router')]
+#[RunTestsInSeparateProcesses]
 class DecoupledRouterFunctionalTest extends BrowserTestBase {
   use AssertPageCacheContextsAndTagsTrait;
 
@@ -140,10 +146,10 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Tests reading multilingual content.
    */
-  public function testNegotiationNoMultilingual() {
+  public function testNegotiationNoMultilingual(): void {
     // This is not build with data providers to avoid rebuilding the environment
     // each test.
-    $make_assertions = function ($path, DecoupledRouterFunctionalTest $test) {
+    $make_assertions = function ($path, DecoupledRouterFunctionalTest $test): void {
       $path = $test->addBasePath($path);
       $res = $test->drupalGet(
         Url::fromRoute('decoupled_router.path_translation'),
@@ -171,7 +177,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       // 3. Test negotiation by multiple redirects for /bar -> /foo -> /node--0.
       'bar',
     ];
-    array_walk($test_cases, function ($test_case) use ($make_assertions) {
+    array_walk($test_cases, function (string $test_case) use ($make_assertions): void {
       $make_assertions($test_case, $this);
     });
   }
@@ -179,7 +185,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Tests reading external redirect.
    */
-  public function testExternalRedirect() {
+  public function testExternalRedirect(): void {
     $res = $this->drupalGet(
       Url::fromRoute('decoupled_router.path_translation'),
       [
@@ -286,7 +292,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Tests decoupled_router.settings:absolute.
    */
-  public function testRelativeAndAbsolutePaths() {
+  public function testRelativeAndAbsolutePaths(): void {
     $node = $this->nodes[0];
     $res = $this->drupalGet(
       Url::fromRoute('decoupled_router.path_translation'),
@@ -346,7 +352,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Tests fragment handing on redirects to entities.
    */
-  public function testFragmentRedirectOnEntity() {
+  public function testFragmentRedirectOnEntity(): void {
     $redirect = Redirect::create(['status_code' => '301']);
     $redirect->setSource('/foo-anchor');
     $redirect->setRedirect('/node--0#anchor');
@@ -383,7 +389,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Tests reading redirect chain.
    */
-  public function testChainedRedirect() {
+  public function testChainedRedirect(): void {
     $node = $this->nodes[0];
     $res = $this->drupalGet(
       Url::fromRoute('decoupled_router.path_translation'),
@@ -444,7 +450,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Tests without redirect module installed.
    */
-  public function testNoRedirectModule() {
+  public function testNoRedirectModule(): void {
     $redirects = Redirect::loadMultiple();
     \Drupal::entityTypeManager()->getStorage('redirect')->delete($redirects);
     \Drupal::service('module_installer')->uninstall(['redirect']);
@@ -474,7 +480,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Test that unpublished content ist not available.
    */
-  public function testUnpublishedContent() {
+  public function testUnpublishedContent(): void {
     $values = [
       'uid' => ['target_id' => $this->user->id()],
       'type' => 'article',
@@ -567,8 +573,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Test that the home path check is working.
    */
-  public function testHomPathCheck() {
-
+  public function testHomPathCheck(): void {
     // Create front page node.
     $this->createNode([
       'uid' => ['target_id' => $this->user->id()],
@@ -618,7 +623,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Tests decoupled router with non-entity routes.
    */
-  public function testViews() {
+  public function testViews(): void {
     \Drupal::service('module_installer')->install(['views']);
     // Create a redirect to the node listing.
     $redirect = Redirect::create(['status_code' => '301']);
@@ -722,7 +727,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Tests decoupled router with non-entity routes.
    */
-  public function testRedirectQueryStringAndFragment() {
+  public function testRedirectQueryStringAndFragment(): void {
     // Create a redirect to user login.
     $redirect = Redirect::create(['status_code' => '301']);
     $redirect->setSource('/funky-login');
@@ -842,7 +847,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * Tests query string and fragment handling on entities.
    */
-  public function testQueryStringsAndFragmentsOnEntities() {
+  public function testQueryStringsAndFragmentsOnEntities(): void {
     $res = $this->drupalGet(
       Url::fromRoute('decoupled_router.path_translation'),
       [
@@ -878,7 +883,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
    * @return string
    *   The path.
    */
-  private function getBasePath() {
+  private function getBasePath(): string {
     $parts = parse_url(
       (
         getenv('SIMPLETEST_BASE_URL') ?: getenv('WEB_HOST')

@@ -1,10 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\decoupled_router\EventSubscriber;
 
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Utility\UrlHelper;
-use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
@@ -55,12 +56,8 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
   /**
    * {@inheritdoc}
    */
-  public function onPathTranslation(PathTranslatorEvent $event) {
+  public function onPathTranslation(PathTranslatorEvent $event): void {
     $response = $event->getResponse();
-    if (!$response instanceof CacheableJsonResponse) {
-      $this->logger->error('Unable to get the response object for the decoupled router event.');
-      return;
-    }
 
     // Find the redirected path. Bear in mind that we need to go through several
     // redirection levels before handing off to the route translator.
