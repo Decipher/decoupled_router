@@ -12,6 +12,7 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\decoupled_router\PathTranslatorEvent;
 use Drupal\path_alias\AliasManagerInterface;
+use Drupal\redirect\Exception\RedirectLoopException;
 use Drupal\redirect\RedirectRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -68,12 +69,26 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
     $cacheable_metadata = new CacheableMetadata();
     $cacheable_metadata->addCacheableDependency($this->configFactory->get('redirect.settings'));
 
-    $redirect = $this->redirectRepository->findMatchingRedirect(
-      $source_path,
-      $request_query,
-      $this->languageManager->getCurrentLanguage()->getId(),
-      $cacheable_metadata
-    );
+    try {
+      $redirect = $this->redirectRepository->findMatchingRedirect(
+        $source_path,
+        $request_query,
+        $this->languageManager->getCurrentLanguage()->getId(),
+        $cacheable_metadata
+      );
+    }
+    catch (RedirectLoopException $e) {
+      // Redirect loops are data problems that the redirect module already
+      // guards against, see RedirectRequestSubscriber. Log the loop and fall
+      // through to the route level translator so the response degrades to a
+      // regular route lookup instead of a 500.
+      $this->logger->warning('Redirect loop identified at %path for redirect %rid. Redirect resolution skipped.', [
+        '%path' => $e->getPath(),
+        '%rid' => $e->getRedirectId(),
+      ]);
+      $response->addCacheableDependency($cacheable_metadata);
+      return;
+    }
     if (!$redirect) {
       return;
     }
