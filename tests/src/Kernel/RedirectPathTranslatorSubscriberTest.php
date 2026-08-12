@@ -188,6 +188,74 @@ final class RedirectPathTranslatorSubscriberTest extends KernelTestBase {
   }
 
   /**
+   * Tests that a redirect loop does not cause a 500 error.
+   *
+   * Two redirects that point at each other form a cycle. The redirect
+   * module detects this and throws RedirectLoopException from
+   * findMatchingRedirect(). Without the catch in the subscriber, this
+   * would bubble up as a 500 response.
+   */
+  public function testRedirectLoopDoesNotReturnError(): void {
+    $redirect_a = Redirect::create(['status_code' => 301]);
+    $redirect_a->setSource('/loop-a');
+    $redirect_a->setRedirect('/loop-b');
+    $redirect_a->save();
+
+    $redirect_b = Redirect::create(['status_code' => 301]);
+    $redirect_b->setSource('/loop-b');
+    $redirect_b->setRedirect('/loop-a');
+    $redirect_b->save();
+
+    $request = Request::create(
+      Url::fromRoute('decoupled_router.path_translation', [], [
+        'query' => ['path' => '/loop-a', '_format' => 'json'],
+      ])->toString()
+    );
+    $response = $this->container->get('http_kernel')->handle($request);
+
+    self::assertNotSame(500, $response->getStatusCode());
+
+    $content = $response->getContent();
+    $data = Json::decode($content === FALSE ? '' : $content);
+    self::assertArrayNotHasKey('redirect', $data, var_export($data, TRUE));
+  }
+
+  /**
+   * Tests that valid redirects still work when a loop exists elsewhere.
+   *
+   * A loop on one pair of paths should not prevent a separate, valid
+   * redirect from resolving correctly.
+   */
+  public function testValidRedirectWorksAlongsideLoop(): void {
+    $entity = $this->createTestEntity('/valid-redirect-target');
+
+    $valid_redirect = Redirect::create(['status_code' => 301]);
+    $valid_redirect->setSource('/old-valid-path');
+    $valid_redirect->setRedirect('/valid-redirect-target');
+    $valid_redirect->save();
+
+    $loop_a = Redirect::create(['status_code' => 301]);
+    $loop_a->setSource('/loop-x');
+    $loop_a->setRedirect('/loop-y');
+    $loop_a->save();
+
+    $loop_b = Redirect::create(['status_code' => 301]);
+    $loop_b->setSource('/loop-y');
+    $loop_b->setRedirect('/loop-x');
+    $loop_b->save();
+
+    $data = $this->translatePath('/old-valid-path');
+
+    self::assertArrayHasKey('redirect', $data, var_export($data, TRUE));
+    self::assertSame('/old-valid-path', $data['redirect'][0]['from']);
+    self::assertArrayHasKey('resolved', $data, var_export($data, TRUE));
+    self::assertEquals(
+      $entity->toUrl('canonical')->setAbsolute(TRUE)->toString(),
+      $data['resolved']
+    );
+  }
+
+  /**
    * Tests a redirect to an entity the anonymous user cannot view.
    *
    * The router sets a 403 response, which is neither "successful" nor 404,
