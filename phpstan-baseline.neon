@@ -1,7 +1,107 @@
 parameters:
 	ignoreErrors:
 		-
+			message: '#^Function decoupled_router_requirements\(\) has parameter \$phase with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: '*/decoupled_router.install'
+		-
+			message: '#^Function decoupled_router_path_delete\(\) has parameter \$path with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: '*/decoupled_router.module'
+		-
+			message: '#^Function decoupled_router_path_update\(\) has parameter \$path with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: '*/decoupled_router.module'
+		-
+			message: '#^Parameter \#1 \.\.\.\$cache_tags of static method Drupal\\Core\\Cache\\Cache\:\:mergeTags\(\) expects list\<string\>, array\<string\> given\.$#'
+			identifier: argument.type
+			count: 2
+			path: '*/src/CacheInvalidator.php'
+		-
+			message: '#^Parameter \#2 \.\.\.\$cache_tags of static method Drupal\\Core\\Cache\\Cache\:\:mergeTags\(\) expects list\<string\>, array\<string\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: '*/src/CacheInvalidator.php'
+		-
 			message: '#^Unsafe usage of new static\(\)\.$#'
 			identifier: new.static
 			count: 1
-			path: src/Controller/PathTranslator.php
+			path: '*/src/Controller/PathTranslator.php'
+		-
+			message: '#^Cannot access offset ''redirect'' on array\|bool\|float\|int\|string\|UnitEnum\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: '*/src/DecoupledRouterServiceProvider.php'
+		-
+			message: '#^Instanceof between Drupal\\Core\\Cache\\CacheableJsonResponse and Drupal\\Core\\Cache\\CacheableJsonResponse will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: '*/src/EventSubscriber/RedirectPathTranslatorSubscriber.php'
+		-
+			message: '#^Parameter \#1 \$string of static method Drupal\\Component\\Serialization\\Json\:\:decode\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: '*/src/EventSubscriber/RedirectPathTranslatorSubscriber.php'
+		-
+			message: '#^Instanceof between Drupal\\Core\\Cache\\CacheableJsonResponse and Drupal\\Core\\Cache\\CacheableJsonResponse will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: '*/src/EventSubscriber/RouterPathTranslatorSubscriber.php'
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 1
+			path: '*/src/EventSubscriber/RouterPathTranslatorSubscriber.php'
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, array\|bool\|float\|int\|string\|UnitEnum\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: '*/src/EventSubscriber/RouterPathTranslatorSubscriber.php'
+		-
+			message: '#^Cannot call method getOwner\(\) on class\-string\<Drupal\\user\\EntityOwnerInterface\>\|Drupal\\user\\EntityOwnerInterface\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: '*/tests/modules/test_decoupled_router/test_decoupled_router.module'
+		-
+			message: '#^Function test_decoupled_router_decoupled_router_info_alter\(\) has parameter \$context with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: '*/tests/modules/test_decoupled_router/test_decoupled_router.module'
+		-
+			message: '#^Function test_decoupled_router_decoupled_router_info_alter\(\) has parameter \$output with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: '*/tests/modules/test_decoupled_router/test_decoupled_router.module'
+		-
+			message: '#^PHPDoc type array of property Drupal\\Tests\\decoupled_router\\Functional\\DecoupledRouterFunctionalTest\:\:\$modules is not covariant with PHPDoc type array\<string\> of overridden property Drupal\\Tests\\BrowserTestBase\:\:\$modules\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: '*/tests/src/Functional/DecoupledRouterFunctionalTest.php'
+		-
+			message: '#^Property Drupal\\Tests\\decoupled_router\\Functional\\DecoupledRouterFunctionalTest\:\:\$user \(Drupal\\user\\Entity\\User\) does not accept Drupal\\user\\UserInterface\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: '*/tests/src/Functional/DecoupledRouterFunctionalTest.php'
+		-
+			message: '#^PHPDoc type array of property Drupal\\Tests\\decoupled_router\\Functional\\DecoupledRouterInfoAlterTest\:\:\$modules is not covariant with PHPDoc type array\<string\> of overridden property Drupal\\Tests\\BrowserTestBase\:\:\$modules\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: '*/tests/src/Functional/DecoupledRouterInfoAlterTest.php'
+		-
+			message: '#^Property Drupal\\Tests\\decoupled_router\\Functional\\DecoupledRouterInfoAlterTest\:\:\$user \(Drupal\\user\\Entity\\User\) does not accept Drupal\\user\\UserInterface\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: '*/tests/src/Functional/DecoupledRouterInfoAlterTest.php'
+		-
+			message: '#^Parameter \#1 \$string of static method Drupal\\Component\\Serialization\\Json\:\:decode\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: '*/tests/src/Kernel/GenericEntityUuidParamConverterRouterPathTranslatorTest.php'
+		-
+			message: '#^Strict comparison using \=\=\= between \*NEVER\* and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: '*/tests/src/Kernel/GenericEntityUuidParamConverterRouterPathTranslatorTest.php'

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\decoupled_router\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
@@ -18,36 +20,20 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 class PathTranslator extends ControllerBase {
 
   /**
-   * Event dispatcher service.
-   *
-   * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface
-   */
-  protected $eventDispatcher;
-
-  /**
-   * The kernel.
-   *
-   * @var \Symfony\Component\HttpKernel\HttpKernelInterface
-   */
-  protected $httpKernel;
-
-  /**
    * EventInfoController constructor.
    *
-   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $event_dispatcher
+   * @param \Symfony\Component\EventDispatcher\EventDispatcherInterface $eventDispatcher
    *   Event dispatcher service.
-   * @param \Symfony\Component\HttpKernel\HttpKernelInterface $http_kernel
+   * @param \Symfony\Component\HttpKernel\HttpKernelInterface $httpKernel
    *   The HTTP kernel.
    */
-  public function __construct(EventDispatcherInterface $event_dispatcher, HttpKernelInterface $http_kernel) {
-    $this->eventDispatcher = $event_dispatcher;
-    $this->httpKernel = $http_kernel;
+  public function __construct(protected EventDispatcherInterface $eventDispatcher, protected HttpKernelInterface $httpKernel) {
   }
 
   /**
    * Create function for dependency injection.
    */
-  public static function create(ContainerInterface $container) {
+  public static function create(ContainerInterface $container): static {
     return new static(
       $container->get('event_dispatcher'),
       $container->get('http_kernel')
@@ -72,7 +58,6 @@ class PathTranslator extends ControllerBase {
     // Event subscribers are in charge of setting the appropriate response,
     // including cacheability metadata.
     $this->eventDispatcher->dispatch($event, PathTranslatorEvent::TRANSLATE);
-    /** @var \Drupal\Core\Cache\CacheableJsonResponse $response */
     $response = $event->getResponse();
     $response->headers->add(['Content-Type' => 'application/json']);
     $response->getCacheableMetadata()->addCacheContexts([

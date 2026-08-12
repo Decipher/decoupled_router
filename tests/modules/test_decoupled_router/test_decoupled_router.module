@@ -5,12 +5,14 @@
  * Allows to extend the functionalities of the decouple router.
  */
 
+declare(strict_types=1);
+
 use Drupal\user\EntityOwnerInterface;
 
 /**
  * Implements hook_decoupled_router_info_alter().
  */
-function test_decoupled_router_decoupled_router_info_alter(&$output, $context) {
+function test_decoupled_router_decoupled_router_info_alter(array &$output, array $context): void {
   $entity = $context['entity'];
   if (!is_subclass_of($entity, EntityOwnerInterface::class)) {
     return;
