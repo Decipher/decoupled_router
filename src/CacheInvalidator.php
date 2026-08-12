@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\decoupled_router;
 
 use Drupal\Core\Cache\Cache;
@@ -13,30 +15,23 @@ use Drupal\Core\Url;
 class CacheInvalidator {
 
   /**
-   * The entity type manager.
-   *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
-   */
-  private $entityTypeManager;
-
-  /**
-   * The invalidator.
-   *
-   * @var \Drupal\Core\Cache\CacheTagsInvalidatorInterface
-   */
-  private $invalidator;
-
-  /**
    * CacheInvalidator constructor.
    *
-   * @param \Drupal\Core\Cache\CacheTagsInvalidatorInterface $invalidator
+   * @param \Drupal\Core\Cache\CacheTagsInvalidatorInterface $cacheTagsInvalidator
    *   The cache tag invalidator.
-   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entity_type_manager
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
    *   The entity type manger.
    */
-  public function __construct(CacheTagsInvalidatorInterface $invalidator, EntityTypeManagerInterface $entity_type_manager) {
-    $this->invalidator = $invalidator;
-    $this->entityTypeManager = $entity_type_manager;
+  public function __construct(
+    /**
+     * The invalidator.
+     */
+    private readonly CacheTagsInvalidatorInterface $cacheTagsInvalidator,
+    /**
+     * The entity type manager.
+     */
+    private readonly EntityTypeManagerInterface $entityTypeManager,
+  ) {
   }
 
   /**
@@ -52,14 +47,14 @@ class CacheInvalidator {
    *
    * @see https://www.drupal.org/project/drupal/issues/2480077
    */
-  public function invalidateByPath(array $path) {
+  public function invalidateByPath(array $path): void {
     // Derive cache tags by source path.
     $tags = $this->getTagsBySourcePath($path['source']);
 
     // Path changes may change a cached 403 or 404 response.
     $tags = Cache::mergeTags($tags, ['4xx-response']);
 
-    $this->invalidator->invalidateTags($tags);
+    $this->cacheTagsInvalidator->invalidateTags($tags);
   }
 
   /**
@@ -83,7 +78,7 @@ class CacheInvalidator {
       $parameters = Url::fromUri('internal:' . $source_path)
         ->getRouteParameters();
     }
-    catch (\UnexpectedValueException $exception) {
+    catch (\UnexpectedValueException) {
       $parameters = [];
     }
     if (empty($parameters)) {
@@ -109,12 +104,10 @@ class CacheInvalidator {
       return $tags;
     }
 
-    $tags = Cache::mergeTags(
+    return Cache::mergeTags(
       $entity_type->getListCacheTags(),
       $entity->getCacheTagsToInvalidate()
     );
-
-    return $tags;
   }
 
 }

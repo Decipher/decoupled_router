@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\decoupled_router;
 
 use Drupal\Core\Cache\CacheableJsonResponse;
@@ -22,17 +24,8 @@ class PathTranslatorEvent extends KernelEvent {
 
   /**
    * The response.
-   *
-   * @var \Drupal\Core\Cache\CacheableJsonResponse
    */
-  private $response;
-
-  /**
-   * The path that needs translation.
-   *
-   * @var string
-   */
-  protected $path;
+  private CacheableJsonResponse $cacheableJsonResponse;
 
   /**
    * PathTranslatorEvent constructor.
@@ -46,16 +39,23 @@ class PathTranslatorEvent extends KernelEvent {
    * @param string $path
    *   The path to process.
    */
-  public function __construct(HttpKernelInterface $kernel, Request $request, $requestType, $path) {
+  public function __construct(
+    HttpKernelInterface $kernel,
+    Request $request,
+    ?int $requestType,
+    /**
+     * The path that needs translation.
+     */
+    protected $path,
+  ) {
     parent::__construct($kernel, $request, $requestType);
-    $this->path = $path;
 
     // Assume a 404 from start.
-    $this->response = new CacheableJsonResponse(
+    $this->cacheableJsonResponse = new CacheableJsonResponse(
       [
         'message' => $this->t(
           'Unable to resolve path @path.',
-          ['@path' => $path]
+          ['@path' => $this->path]
         ),
         'details' => $this->t(
           'None of the available methods were able to find a match for this path.'
@@ -81,7 +81,7 @@ class PathTranslatorEvent extends KernelEvent {
    * @param string $path
    *   The path.
    */
-  public function setPath($path) {
+  public function setPath($path): void {
     $this->path = $path;
   }
 
@@ -91,8 +91,8 @@ class PathTranslatorEvent extends KernelEvent {
    * @return \Drupal\Core\Cache\CacheableJsonResponse
    *   The response.
    */
-  public function getResponse() {
-    return $this->response;
+  public function getResponse(): CacheableJsonResponse {
+    return $this->cacheableJsonResponse;
   }
 
 }

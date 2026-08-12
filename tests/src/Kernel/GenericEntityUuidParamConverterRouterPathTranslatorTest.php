@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
+use PHPUnit\Framework\Attributes\TestWith;
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Uuid\Uuid;
 use Drupal\Core\Cache\NullBackend;
@@ -24,6 +27,8 @@ use Symfony\Component\Routing\Route;
  * @group decoupled_router
  * @coversDefaultClass \Drupal\decoupled_router\EventSubscriber\RouterPathTranslatorSubscriber
  */
+#[Group('decoupled_router')]
+#[RunTestsInSeparateProcesses]
 final class GenericEntityUuidParamConverterRouterPathTranslatorTest extends KernelTestBase implements ParamConverterInterface {
 
   use DynamicEntityTypeParamConverterTrait;
@@ -47,7 +52,7 @@ final class GenericEntityUuidParamConverterRouterPathTranslatorTest extends Kern
   /**
    * {@inheritdoc}
    */
-  public function register(ContainerBuilder $container) {
+  public function register(ContainerBuilder $container): void {
     parent::register($container);
 
     // Parent class clears these tags.
@@ -91,6 +96,9 @@ final class GenericEntityUuidParamConverterRouterPathTranslatorTest extends Kern
    *           ["/entity_test/1"]
    *           ["/entity-test"]
    */
+  #[TestWith(['/entity_test/01deaea2-e5dc-4255-8d97-ba0543cf790b'])]
+  #[TestWith(['/entity_test/1'])]
+  #[TestWith(['/entity-test'])]
   public function testTranslationFromUuid(string $path): void {
     user_role_grant_permissions(
       RoleInterface::ANONYMOUS_ID,
@@ -138,7 +146,7 @@ final class GenericEntityUuidParamConverterRouterPathTranslatorTest extends Kern
   /**
    * {@inheritdoc}
    */
-  public function applies($definition, $name, Route $route) {
+  public function applies($definition, $name, Route $route): bool {
     // Opposite of \Drupal\jsonapi\ParamConverter\EntityUuidConverter::applies.
     return (
       Routes::getResourceTypeNameFromParameters($route->getDefaults()) === NULL &&

@@ -1,0 +1,21 @@
+{
+  "name": "@drupal/decoupled_router",
+  "version": "0.1.0",
+  "description": "Provides decoupled_router functionality..",
+  "license": "GPL-2.0-or-later",
+  "contributors": [],
+  "scripts": {
+    "lint-spell": "cspell --no-progress",
+    "lint": "echo 'No JS/CSS in this module to lint.'",
+    "lint-fix": "echo 'No JS/CSS in this module to lint.'",
+    "test": "echo 'No JS tests in this module.'",
+    "build": "echo Would run build"
+  },
+  "engines": {
+    "npm": ">=8.19.4",
+    "node": ">=18.20.8"
+  },
+  "devDependencies": {
+    "cspell": "^8.19.4"
+  }
+}

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\decoupled_router;
 
 use Drupal\Core\DependencyInjection\ContainerBuilder;
@@ -14,7 +16,7 @@ class DecoupledRouterServiceProvider implements ServiceProviderInterface {
   /**
    * {@inheritdoc}
    */
-  public function register(ContainerBuilder $container) {
+  public function register(ContainerBuilder $container): void {
     if (isset($container->getParameter('container.modules')['redirect'])) {
       $container->register('decoupled_router.redirect_path_translator.subscriber', RedirectPathTranslatorSubscriber::class)
         ->setAutowired(TRUE)

@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\decoupled_router\EventSubscriber;
 
 use Drupal\Component\Utility\UrlHelper;
-use Drupal\Core\Cache\CacheableJsonResponse;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Config\Config;
 use Drupal\Core\Config\ConfigFactoryInterface;
@@ -33,48 +34,6 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
   use StringTranslationTrait;
 
   /**
-   * The service container.
-   *
-   * @var \Symfony\Component\DependencyInjection\ContainerInterface
-   */
-  protected $container;
-
-  /**
-   * The logger.
-   *
-   * @var \Psr\Log\LoggerInterface
-   */
-  protected $logger;
-
-  /**
-   * The router.
-   *
-   * @var \Symfony\Component\Routing\Matcher\UrlMatcherInterface
-   */
-  protected $router;
-
-  /**
-   * The module handler.
-   *
-   * @var \Drupal\Core\Extension\ModuleHandlerInterface
-   */
-  protected $moduleHandler;
-
-  /**
-   * The config factory.
-   *
-   * @var \Drupal\Core\Config\ConfigFactoryInterface
-   */
-  protected $configFactory;
-
-  /**
-   * The alias manager.
-   *
-   * @var \Drupal\path_alias\AliasManagerInterface
-   */
-  protected $aliasManager;
-
-  /**
    * The decoupled_router.settings config.
    */
   protected Config $decoupledRouterConfig;
@@ -93,40 +52,30 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    *   The logger.
    * @param \Symfony\Component\Routing\Matcher\UrlMatcherInterface $router
    *   The router.
-   * @param \Drupal\Core\Extension\ModuleHandlerInterface $module_handler
+   * @param \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    *   The module handler.
-   * @param \Drupal\Core\Config\ConfigFactoryInterface $config_factory
+   * @param \Drupal\Core\Config\ConfigFactoryInterface $configFactory
    *   The config factory.
    * @param \Drupal\path_alias\AliasManagerInterface $aliasManager
    *   The alias manager.
    */
   public function __construct(
-    ContainerInterface $container,
-    LoggerInterface $logger,
-    UrlMatcherInterface $router,
-    ModuleHandlerInterface $module_handler,
-    ConfigFactoryInterface $config_factory,
-    AliasManagerInterface $aliasManager,
+    protected ContainerInterface $container,
+    protected LoggerInterface $logger,
+    protected UrlMatcherInterface $router,
+    protected ModuleHandlerInterface $moduleHandler,
+    protected ConfigFactoryInterface $configFactory,
+    protected AliasManagerInterface $aliasManager,
   ) {
-    $this->container = $container;
-    $this->logger = $logger;
-    $this->router = $router;
-    $this->moduleHandler = $module_handler;
-    $this->configFactory = $config_factory;
-    $this->aliasManager = $aliasManager;
-    $this->decoupledRouterConfig = $config_factory->get('decoupled_router.settings');
+    $this->decoupledRouterConfig = $this->configFactory->get('decoupled_router.settings');
   }
 
   /**
    * Processes a path translation request.
    */
-  public function onPathTranslation(PathTranslatorEvent $event) {
+  public function onPathTranslation(PathTranslatorEvent $event): void {
     $response = $event->getResponse();
     $cacheable_metadata = new CacheableMetadata();
-    if (!$response instanceof CacheableJsonResponse) {
-      $this->logger->error('Unable to get the response object for the decoupled router event.');
-      return;
-    }
     $path = $this->cleanSubdirInPath($event->getPath(), $event->getRequest());
 
     // Preserve the original query string and fragment if any.
@@ -149,10 +98,10 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     try {
       $match_info = $this->router->match($path);
     }
-    catch (ResourceNotFoundException $exception) {
+    catch (ResourceNotFoundException) {
       return;
     }
-    catch (MethodNotAllowedException $exception) {
+    catch (MethodNotAllowedException) {
       $response->setStatusCode(403);
       return;
     }
@@ -283,7 +232,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    *   underlying entity. It also returns the name of the parameter under which
    *   the entity lives in the route ('node' vs 'entity').
    */
-  protected function findEntityAndKeys(array $match_info) {
+  protected function findEntityAndKeys(array $match_info): array {
     $entity = NULL;
     /** @var \Symfony\Component\Routing\Route $route */
     $route = $match_info[RouteObjectInterface::ROUTE_OBJECT];
@@ -346,7 +295,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
   /**
    * {@inheritdoc}
    */
-  public static function getSubscribedEvents() {
+  public static function getSubscribedEvents(): array {
     $events[PathTranslatorEvent::TRANSLATE][] = ['onPathTranslation'];
     return $events;
   }
@@ -366,7 +315,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
   protected function findEntityTypeFromRoute(Route $route) {
     $parameters = (array) $route->getOption('parameters');
     // Find the entity type for the first parameter that has one.
-    return array_reduce($parameters, function ($carry, $parameter) {
+    return array_reduce($parameters, function ($carry, array $parameter) {
       if (!$carry && !empty($parameter['type'])) {
         $parts = explode(':', $parameter['type']);
         // We know that the parameter is for an entity if the type is set to
@@ -376,7 +325,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         }
       }
       return $carry;
-    }, NULL);
+    });
   }
 
   /**
@@ -390,7 +339,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    * @return string
    *   The clean path.
    */
-  protected function cleanSubdirInPath($path, Request $request) {
+  protected function cleanSubdirInPath($path, Request $request): ?string {
     // Remove any possible leading subdir information in case Drupal is
     // installed under http://example.com/d8/index.php
     $regexp = preg_quote($request->getBasePath(), '/');

@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\Tests\decoupled_router\Functional;
 
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Url;
 use Drupal\Tests\BrowserTestBase;
@@ -11,6 +15,8 @@ use Drupal\Tests\BrowserTestBase;
  *
  * @group decoupled_router
  */
+#[Group('decoupled_router')]
+#[RunTestsInSeparateProcesses]
 class DecoupledRouterInfoAlterTest extends BrowserTestBase {
 
   /**
@@ -59,7 +65,7 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
    *
    * Allow the "test_decoupled_router" module to add new values to the output.
    */
-  public function testDecoupledRouterInfoAlterTest() {
+  public function testDecoupledRouterInfoAlterTest(): void {
     $values = [
       'uid' => ['target_id' => $this->user->id()],
       'type' => 'article',
