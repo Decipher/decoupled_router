@@ -70,3 +70,58 @@ phpstan (previous major):
     - when: never
 stylelint:
   allow_failure: false
+
+################
+# Coverage
+#
+# The shared DrupalCI runner image has no code coverage driver installed, so
+# the standard "phpunit" job above runs with "--no-coverage" to avoid
+# "failOnWarning" turning the missing-driver warning into a hard failure.
+#
+# This job installs pcov at runtime and re-runs the suite using the project's
+# own phpunit.xml (which has a <coverage> block) so coverage is visible in
+# this job's log and, if pcov installs successfully, surfaced as a percentage
+# badge and inline MR diff annotations. It is independent of and does not
+# affect the pass/fail state of the main "phpunit" job.
+################
+coverage:
+  extends: phpunit
+  allow_failure: true
+  before_script:
+    - (pecl install pcov || true)
+    - EXT_DIR=$(php -r 'echo ini_get("extension_dir");')
+    - "CONF_DIR=$(php --ini | grep 'Scan for additional' | sed 's/.*: //')"
+    - |
+      if [ -f "$EXT_DIR/pcov.so" ] && [ -d "$CONF_DIR" ]; then
+        echo "extension=pcov.so" > "$CONF_DIR/pcov.ini"
+      fi
+    - php -m | grep -qi pcov && echo "pcov is available for this run." || echo "pcov could not be installed; this job will fail on the missing-driver warning."
+  variables:
+    # Functional/BrowserTestBase tests spawn a separate PHP process per test,
+    # invisible to the coverage driver, so they contribute nothing to the
+    # coverage report. Skipping them here avoids duplicating the shared
+    # runner's Apache/Chrome/database load that the required "phpunit" job
+    # is already generating in parallel, which was otherwise making that
+    # job's functional tests intermittently fail.
+    #
+    # --testsuite is not used for this: the base script always passes a
+    # positional test directory ahead of $_PHPUNIT_EXTRA, and PHPUnit
+    # ignores --testsuite filtering once a positional path is also given.
+    # --exclude-group works regardless, since group filtering does not
+    # depend on the <testsuites> directory mapping.
+    _PHPUNIT_EXTRA: '--colors=always --testdox --exclude-group decoupled_router_functional'
+  coverage: '/^\s*Lines:\s*\d+\.\d+%/'
+  artifacts:
+    paths:
+      - junit.xml
+      - $CI_PROJECT_DIR/$_WEB_ROOT/sites/default/files/simpletest
+      - $BROWSERTEST_OUTPUT_DIRECTORY
+      - apache.access.log.txt
+      - apache.error.log.txt
+      # Full browsable HTML coverage report, downloadable from the job page.
+      - .logs/coverage/phpunit/.coverage-html
+      - .logs/coverage/phpunit/cobertura.xml
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: .logs/coverage/phpunit/cobertura.xml

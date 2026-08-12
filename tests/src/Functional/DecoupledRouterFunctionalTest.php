@@ -19,8 +19,10 @@ use Drupal\Tests\system\Functional\Cache\AssertPageCacheContextsAndTagsTrait;
  * Test class.
  *
  * @group decoupled_router
+ * @group decoupled_router_functional
  */
 #[Group('decoupled_router')]
+#[Group('decoupled_router_functional')]
 #[RunTestsInSeparateProcesses]
 class DecoupledRouterFunctionalTest extends BrowserTestBase {
   use AssertPageCacheContextsAndTagsTrait;

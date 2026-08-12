@@ -1,0 +1,45 @@
+test_decoupled_router.post_only:
+  path: '/test-decoupled-router/post-only'
+  defaults:
+    _controller: '\test_decoupled_router_post_only_page'
+  methods: [POST]
+  requirements:
+    _access: 'TRUE'
+
+test_decoupled_router.raw_entity_test_param:
+  path: '/test-decoupled-router/raw-entity-test-param/{entity_test}'
+  defaults:
+    _controller: '\test_decoupled_router_post_only_page'
+  requirements:
+    _access: 'TRUE'
+    entity_test: '.*'
+
+test_decoupled_router.raw_nonentity_param:
+  path: '/test-decoupled-router/raw-nonentity-param/{foo}'
+  defaults:
+    _controller: '\test_decoupled_router_post_only_page'
+  requirements:
+    _access: 'TRUE'
+    foo: '.*'
+
+test_decoupled_router.generic_entity_param:
+  path: '/test-decoupled-router/generic-entity-param/{entity}'
+  defaults:
+    _controller: '\test_decoupled_router_post_only_page'
+  options:
+    parameters:
+      entity:
+        type: 'entity:entity_test'
+  requirements:
+    _access: 'TRUE'
+
+test_decoupled_router.malformed_entity_param:
+  path: '/test-decoupled-router/malformed-entity-param/{entity}'
+  defaults:
+    _controller: '\test_decoupled_router_post_only_page'
+  options:
+    parameters:
+      entity:
+        converter: 'paramconverter.test_decoupled_router.malformed_entity'
+  requirements:
+    _access: 'TRUE'

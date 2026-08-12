@@ -14,8 +14,10 @@ use Drupal\Tests\BrowserTestBase;
  * Test class.
  *
  * @group decoupled_router
+ * @group decoupled_router_functional
  */
 #[Group('decoupled_router')]
+#[Group('decoupled_router_functional')]
 #[RunTestsInSeparateProcesses]
 class DecoupledRouterInfoAlterTest extends BrowserTestBase {
 

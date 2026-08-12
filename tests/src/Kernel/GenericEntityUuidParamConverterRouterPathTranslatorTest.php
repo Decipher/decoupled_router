@@ -131,6 +131,54 @@ final class GenericEntityUuidParamConverterRouterPathTranslatorTest extends Kern
   }
 
   /**
+   * Translates a single entity's canonical path.
+   *
+   * @return array
+   *   The JSON:API portion of the decoded response.
+   */
+  protected function translateAndGetJsonapiInfo(string $name): array {
+    $entity = $this->container->get('entity_type.manager')->getStorage('entity_test')
+      ->create(['name' => $name]);
+    $entity->save();
+
+    $request = Request::create(
+      Url::fromRoute('decoupled_router.path_translation', [], [
+        'query' => [
+          'path' => '/entity_test/' . $entity->id(),
+          '_format' => 'json',
+        ],
+      ])->toString()
+    );
+
+    $response = $this->container->get('http_kernel')->handle($request);
+    $content = $response->getContent();
+    $data = Json::decode($content === FALSE ? '' : $content);
+    self::assertArrayHasKey('jsonapi', $data, var_export($data, TRUE));
+    return $data['jsonapi'];
+  }
+
+  /**
+   * Tests that the JSON:API entity route parameter name is cached #3116487.
+   *
+   * The route parameter name lookup caches its result in a static variable
+   * the first time it runs, and reuses it on later calls within the same
+   * process. Translating two entities of the same type exercises both the
+   * first (uncached) call and the cached one.
+   */
+  public function testJsonapiInfoIsConsistentAcrossCachedCalls(): void {
+    user_role_grant_permissions(
+      RoleInterface::ANONYMOUS_ID,
+      ['access content', 'view test entity']
+    );
+
+    $first = $this->translateAndGetJsonapiInfo('first');
+    $second = $this->translateAndGetJsonapiInfo('second');
+
+    self::assertSame($first['resourceName'], $second['resourceName']);
+    self::assertNotSame($first['individual'], $second['individual']);
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function convert($value, $definition, $name, array $defaults) {

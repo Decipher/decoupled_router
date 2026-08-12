@@ -108,6 +108,7 @@
         <report>
             <html outputDirectory="../.logs/coverage/phpunit/.coverage-html" lowUpperBound="50" highLowerBound="90"/>
             <cobertura outputFile="../.logs/coverage/phpunit/cobertura.xml"/>
+            <text outputFile="php://stdout" showUncoveredFiles="false" showOnlySummary="true"/>
         </report>
     </coverage>
     <source>
@@ -118,10 +119,18 @@
             <directory suffix=".install">web/modules/custom/decoupled_router</directory>
         </include>
 
+        <!-- Use a literal node_modules path below, never a "**" glob. Globs
+        starting with ** are expanded eagerly by php-file-iterator via
+        repeated glob(GLOB_ONLYDIR) from the working directory before any
+        filtering happens, which walks into web/core/node_modules and
+        exhausts file descriptors on DrupalCI runners ("Too many open
+        files"). -->
         <exclude>
             <directory suffix=".php">web/modules/custom/decoupled_router/tests</directory>
+            <directory suffix=".module">web/modules/custom/decoupled_router/tests</directory>
             <file>web/modules/custom/decoupled_router/rector.php</file>
-            <directory>**/node_modules/**</directory>
+            <file>web/modules/custom/decoupled_router/decoupled_router.api.php</file>
+            <directory>web/modules/custom/decoupled_router/node_modules</directory>
         </exclude>
     </source>
 </phpunit>
