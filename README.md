@@ -1,6 +1,8 @@
 # Decoupled Router
 
 [![Pipeline](https://git.drupalcode.org/project/decoupled_router/badges/2.x/pipeline.svg)](https://git.drupalcode.org/project/decoupled_router/-/pipelines)
+[![Test](https://github.com/Decipher/decoupled_router/actions/workflows/test.yml/badge.svg?branch=2.x)](https://github.com/Decipher/decoupled_router/actions/workflows/test.yml?query=branch%3A2.x)
+[![Coverage](https://codecov.io/gh/Decipher/decoupled_router/branch/2.x/graph/badge.svg)](https://codecov.io/gh/Decipher/decoupled_router/branch/2.x)
 
 Handles the awkwardness of routing in decoupled architectures. It exposes a
 `/router/translate-path` endpoint that resolves a Drupal path (or path alias)

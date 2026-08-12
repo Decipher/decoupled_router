@@ -19,3 +19,14 @@ function test_decoupled_router_decoupled_router_info_alter(array &$output, array
   }
   $output['entity']['owner'] = $entity->getOwner()->uuid();
 }
+
+/**
+ * Page callback for the POST-only test route.
+ *
+ * This route only exists so tests can trigger a route match against a path
+ * whose route requires a different HTTP method than the request used. It is
+ * never actually invoked.
+ */
+function test_decoupled_router_post_only_page(): array {
+  return ['#markup' => 'OK'];
+}
