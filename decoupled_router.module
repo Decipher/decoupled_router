@@ -10,25 +10,33 @@ declare(strict_types=1);
 use Drupal\path_alias\PathAliasInterface;
 
 /**
- * Implements hook_ENTITY_TYPE_update().
- */
-function decoupled_router_path_alias_update(PathAliasInterface $path_alias): void {
-  \Drupal::service('decoupled_router.cache_invalidation')
-    ->invalidateByPath(['source' => $path_alias->getAlias()]);
-}
-
-/**
  * Implements hook_ENTITY_TYPE_insert().
+ *
+ * Invalidates cached decoupled router responses when a new path alias is
+ * created. The internal source path is used so that entity-specific cache
+ * tags can be resolved.
  */
 function decoupled_router_path_alias_insert(PathAliasInterface $path_alias): void {
   \Drupal::service('decoupled_router.cache_invalidation')
-    ->invalidateByPath(['source' => $path_alias->getAlias()]);
+    ->invalidateByPath(['source' => $path_alias->getPath()]);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update().
+ *
+ * Invalidates cached decoupled router responses when a path alias is updated.
+ */
+function decoupled_router_path_alias_update(PathAliasInterface $path_alias): void {
+  \Drupal::service('decoupled_router.cache_invalidation')
+    ->invalidateByPath(['source' => $path_alias->getPath()]);
 }
 
 /**
  * Implements hook_ENTITY_TYPE_delete().
+ *
+ * Invalidates cached decoupled router responses when a path alias is deleted.
  */
 function decoupled_router_path_alias_delete(PathAliasInterface $path_alias): void {
   \Drupal::service('decoupled_router.cache_invalidation')
-    ->invalidateByPath(['source' => $path_alias->getAlias()]);
+    ->invalidateByPath(['source' => $path_alias->getPath()]);
 }
