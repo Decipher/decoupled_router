@@ -152,6 +152,28 @@ final class DecoupledRouterModuleHooksTest extends KernelTestBase {
   }
 
   /**
+   * Tests that repointing an alias to a different source invalidates both.
+   *
+   * The alias edit form allows changing the "Path" (source) a alias points
+   * to, not just its alias text. Both the entity that lost the alias and
+   * the entity that gained it must have their caches invalidated.
+   */
+  public function testPathAliasUpdateRepointedSourceInvalidatesBothEntities(): void {
+    $old_entity = $this->createTestEntity('/repoint-old');
+    $new_entity = $this->createTestEntity('/repoint-new-target');
+
+    $this->primeEntityCache('test:repoint_old', $old_entity->getCacheTagsToInvalidate());
+    $this->primeEntityCache('test:repoint_new', $new_entity->getCacheTagsToInvalidate());
+
+    $alias = $this->loadPathAliasForEntity((string) $old_entity->id());
+    self::assertNotNull($alias);
+    $alias->set('path', '/entity_test/' . $new_entity->id())->save();
+
+    self::assertFalse(\Drupal::cache()->get('test:repoint_old'), 'The entity that lost the alias is invalidated.');
+    self::assertFalse(\Drupal::cache()->get('test:repoint_new'), 'The entity that gained the alias is invalidated.');
+  }
+
+  /**
    * Tests that deleting a path alias invalidates cached 4xx responses.
    */
   public function testPathAliasDeleteInvalidatesFourXxResponseCache(): void {
