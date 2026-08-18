@@ -146,7 +146,12 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
 
       return;
     }
-    $entity_param = $param_uses_uuid ? $entity->uuid() : $entity->id();
+    // JSON:API routes take the entity UUID in their parameter. All other
+    // routes take the entity ID. Use the ID when possible, because that gives
+    // the canonical form of the URL.
+    $entity_param = $match_info[RouteObjectInterface::ROUTE_OBJECT]->getDefault('_is_jsonapi')
+      ? $entity->uuid()
+      : $entity->id();
     $resolved_url = Url::fromRoute($match_info[RouteObjectInterface::ROUTE_NAME], [
       $route_parameter_entity_key => $entity_param,
     ], $resolved_url_options);
