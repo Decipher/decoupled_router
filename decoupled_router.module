@@ -10,25 +10,79 @@ declare(strict_types=1);
 use Drupal\path_alias\PathAliasInterface;
 
 /**
- * Implements hook_path_update().
+ * Implements hook_ENTITY_TYPE_presave().
+ *
+ * Stashes the currently-stored version of an existing path alias before
+ * save overwrites it. decoupled_router_path_alias_update() needs the
+ * unchanged version to detect a repointed alias's old source path; loading
+ * it again after save would just return the new values.
  */
-function decoupled_router_path_update($path): void {
-  \Drupal::service('decoupled_router.cache_invalidation')
-    ->invalidateByPath($path);
+function decoupled_router_path_alias_presave(PathAliasInterface $path_alias): void {
+  if ($path_alias->isNew()) {
+    return;
+  }
+  $storage = \Drupal::entityTypeManager()->getStorage('path_alias');
+  $unchanged = $storage->loadUnchanged($path_alias->id());
+  if ($unchanged instanceof PathAliasInterface) {
+    _decoupled_router_stash_path_alias($path_alias->id(), $unchanged);
+  }
 }
 
 /**
  * Implements hook_ENTITY_TYPE_insert().
+ *
+ * Invalidates cached decoupled router responses when a new path alias is
+ * created. The internal source path is used so that entity-specific cache
+ * tags can be resolved.
  */
 function decoupled_router_path_alias_insert(PathAliasInterface $path_alias): void {
   \Drupal::service('decoupled_router.cache_invalidation')
-    ->invalidateByPath(['source' => $path_alias->getAlias()]);
+    ->invalidateByPath(['source' => $path_alias->getPath()]);
 }
 
 /**
- * Implements hook_path_delete().
+ * Implements hook_ENTITY_TYPE_update().
+ *
+ * Invalidates cached decoupled router responses when a path alias is
+ * updated. A path alias can be repointed to a different source path (the
+ * "Path" field on the alias edit form, not just the "Alias" field), so the
+ * original source path is invalidated too when it differs from the new
+ * one. Otherwise a repointed alias leaves the old source path's decoupled
+ * router responses stale.
  */
-function decoupled_router_path_delete($path): void {
+function decoupled_router_path_alias_update(PathAliasInterface $path_alias): void {
+  $cache_invalidator = \Drupal::service('decoupled_router.cache_invalidation');
+  $cache_invalidator->invalidateByPath(['source' => $path_alias->getPath()]);
+
+  $original = _decoupled_router_stash_path_alias($path_alias->id());
+  if ($original instanceof PathAliasInterface && $original->getPath() !== $path_alias->getPath()) {
+    $cache_invalidator->invalidateByPath(['source' => $original->getPath()]);
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_delete().
+ *
+ * Invalidates cached decoupled router responses when a path alias is deleted.
+ */
+function decoupled_router_path_alias_delete(PathAliasInterface $path_alias): void {
   \Drupal::service('decoupled_router.cache_invalidation')
-    ->invalidateByPath($path);
+    ->invalidateByPath(['source' => $path_alias->getPath()]);
+}
+
+/**
+ * Stores or retrieves the pre-save version of a path alias for this request.
+ *
+ * Called with $set to store, or without it to retrieve and clear the
+ * stashed value.
+ */
+function _decoupled_router_stash_path_alias(int|string $id, ?PathAliasInterface $set = NULL): ?PathAliasInterface {
+  static $stash = [];
+  if ($set instanceof PathAliasInterface) {
+    $stash[$id] = $set;
+    return NULL;
+  }
+  $alias = $stash[$id] ?? NULL;
+  unset($stash[$id]);
+  return $alias;
 }
