@@ -79,7 +79,9 @@ config to the filesystem. A settings form is tracked in
   JSON:API resource info, entity data, and cacheability metadata
 - Redirect resolution via the optional Redirect module integration
 - Non-entity route support (e.g. Views-backed pages)
-- Multilingual path/redirect resolution
+- Multilingual path/redirect resolution is in progress for 2.1.0 via
+  [#3111456](https://www.drupal.org/project/decoupled_router/issues/3111456);
+  until then, paths carrying a language prefix do not resolve
 
 ## FAQ
 
