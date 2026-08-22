@@ -105,8 +105,3 @@ parameters:
 			identifier: identical.alwaysFalse
 			count: 1
 			path: '*/tests/src/Kernel/GenericEntityUuidParamConverterRouterPathTranslatorTest.php'
-		-
-			message: '#^Call to an undefined method Drupal\\language\\LanguageNegotiationMethodInterface\:\:processInbound\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: '*/src/EventSubscriber/RouterPathTranslatorSubscriber.php'
