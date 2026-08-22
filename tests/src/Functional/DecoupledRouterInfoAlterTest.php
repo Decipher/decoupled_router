@@ -104,8 +104,8 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
         'resourceName' => 'node--article',
-        'pathPrefix' => 'web/jsonapi',
-        'basePath' => '/web/jsonapi',
+        'pathPrefix' => trim((string) parse_url($this->buildUrl('/jsonapi'), PHP_URL_PATH), '/'),
+        'basePath' => (string) parse_url($this->buildUrl('/jsonapi'), PHP_URL_PATH),
         'entryPoint' => $this->buildUrl('/jsonapi'),
       ],
       'meta' => [
