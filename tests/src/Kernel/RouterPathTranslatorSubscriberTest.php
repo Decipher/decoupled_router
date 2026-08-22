@@ -138,6 +138,26 @@ final class RouterPathTranslatorSubscriberTest extends KernelTestBase implements
   }
 
   /**
+   * Tests a path that carries a query string and a fragment #3397122.
+   *
+   * The path must still match its route, and both the query string and the
+   * fragment must survive into the resolved URL.
+   */
+  public function testQueryStringAndFragmentArePreserved(): void {
+    $entity = $this->container->get('entity_type.manager')->getStorage('entity_test')
+      ->create(['name' => 'test', 'path' => '/entity-test', 'user_id' => 0]);
+    $entity->save();
+
+    $response = $this->translatePathResponse('/entity-test?foo=bar#content-id-fragment');
+    $data = $this->decode($response);
+
+    self::assertSame(200, $response->getStatusCode(), var_export($data, TRUE));
+    self::assertStringContainsString('foo=bar', $data['resolved']);
+    self::assertStringEndsWith('#content-id-fragment', $data['resolved']);
+    self::assertSame($entity->uuid(), $data['entity']['uuid']);
+  }
+
+  /**
    * Tests that a path with no matching route at all leaves the default 404.
    */
   public function testUnresolvablePathReturns404(): void {

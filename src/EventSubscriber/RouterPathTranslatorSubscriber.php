@@ -95,6 +95,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       return;
     }
 
+    $path = $this->cleanQueriesAndFragment($path);
     try {
       $match_info = $this->router->match($path);
     }
@@ -349,6 +350,24 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     // installed under http://example.com/d8/index.php
     $regexp = preg_quote($request->getBasePath(), '/');
     return preg_replace(sprintf('/^%s/', $regexp), '', $path);
+  }
+
+  /**
+   * Removes the query string and the fragment from the path.
+   *
+   * The router only matches a bare path. The query string and the fragment
+   * are captured before this runs and reapplied to the resolved URL.
+   *
+   * @param string $path
+   *   The path, which can carry a query string and a fragment.
+   *
+   * @return string
+   *   The path without the query string and the fragment.
+   */
+  protected function cleanQueriesAndFragment(string $path): string {
+    $path = explode('?', $path)[0];
+
+    return explode('#', $path)[0];
   }
 
   /**

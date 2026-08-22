@@ -154,6 +154,30 @@ final class RedirectPathTranslatorSubscriberTest extends KernelTestBase {
   }
 
   /**
+   * Tests a redirect whose destination carries a fragment #3397122.
+   *
+   * The destination must still resolve at the route level, so the response
+   * carries the entity data, and the fragment must survive into the
+   * resolved URL.
+   */
+  public function testRedirectDestinationFragmentIsPreserved(): void {
+    $entity = $this->createTestEntity('/entity-test');
+
+    $redirect = Redirect::create(['status_code' => 301]);
+    $redirect->setSource('/some-path-1/some-path-2/test');
+    $redirect->setRedirect('/entity-test#content-id-fragment');
+    $redirect->save();
+
+    $data = $this->translatePath('/some-path-1/some-path-2/test');
+
+    self::assertArrayHasKey('resolved', $data, var_export($data, TRUE));
+    self::assertStringEndsWith('#content-id-fragment', $data['resolved']);
+    self::assertArrayHasKey('entity', $data, var_export($data, TRUE));
+    self::assertSame($entity->uuid(), $data['entity']['uuid']);
+    self::assertSame('/some-path-1/some-path-2/test', $data['redirect'][0]['from']);
+  }
+
+  /**
    * Tests that a path with no matching redirect falls through to the router.
    */
   public function testNoRedirectFallsThroughToRouter(): void {
