@@ -81,7 +81,8 @@ config to the filesystem. A settings form is tracked in
 - Non-entity route support (e.g. Views-backed pages)
 - Multilingual path/redirect resolution is in progress for 2.1.0 via
   [#3111456](https://www.drupal.org/project/decoupled_router/issues/3111456);
-  until then, paths carrying a language prefix do not resolve
+  until then, language-prefixed aliases and redirects are not reliably
+  resolved
 
 ## FAQ
 
