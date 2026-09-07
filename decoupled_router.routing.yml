@@ -3,6 +3,11 @@ decoupled_router.path_translation:
   defaults:
     _title: 'Translates an incoming path into a formatted response.'
     _controller: '\Drupal\decoupled_router\Controller\PathTranslator::translate'
+    # This is an API endpoint, so it must answer the request it was given.
+    # The Redirect module normalises routes by default, which on a site
+    # where every language has a URL prefix turns a request for this path
+    # into a redirect to the prefixed form of it.
+    _disable_route_normalizer: TRUE
   methods: [GET]
   options:
     _auth: ['basic_auth', 'cookie', 'oauth2', 'jwt_auth']

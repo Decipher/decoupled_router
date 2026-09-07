@@ -318,13 +318,14 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
         'bundle' => 'article',
         'id' => $node->id(),
         'uuid' => $node->uuid(),
+        'langcode' => 'en',
       ],
       'label' => $node->label(),
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
         'resourceName' => 'node--article',
-        'pathPrefix' => 'jsonapi',
-        'basePath' => '/jsonapi',
+        'pathPrefix' => trim((string) parse_url($this->buildUrl('/jsonapi'), PHP_URL_PATH), '/'),
+        'basePath' => (string) parse_url($this->buildUrl('/jsonapi'), PHP_URL_PATH),
         'entryPoint' => $this->buildUrl('/jsonapi'),
       ],
       'meta' => [
@@ -431,13 +432,14 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
         'bundle' => 'article',
         'id' => $node->id(),
         'uuid' => $node->uuid(),
+        'langcode' => 'en',
       ],
       'label' => $node->label(),
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
         'resourceName' => 'node--article',
-        'pathPrefix' => 'jsonapi',
-        'basePath' => '/jsonapi',
+        'pathPrefix' => trim((string) parse_url($this->buildUrl('/jsonapi'), PHP_URL_PATH), '/'),
+        'basePath' => (string) parse_url($this->buildUrl('/jsonapi'), PHP_URL_PATH),
         'entryPoint' => $this->buildUrl('/jsonapi'),
       ],
       'meta' => [
@@ -546,13 +548,14 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
         'bundle' => 'article',
         'id' => $node->id(),
         'uuid' => $node->uuid(),
+        'langcode' => 'en',
       ],
       'label' => $node->label(),
       'jsonapi' => [
         'individual' => $this->buildUrl('/jsonapi/node/article/' . $node->uuid()),
         'resourceName' => 'node--article',
-        'pathPrefix' => 'jsonapi',
-        'basePath' => '/jsonapi',
+        'pathPrefix' => trim((string) parse_url($this->buildUrl('/jsonapi'), PHP_URL_PATH), '/'),
+        'basePath' => (string) parse_url($this->buildUrl('/jsonapi'), PHP_URL_PATH),
         'entryPoint' => $this->buildUrl('/jsonapi'),
       ],
       'meta' => [
@@ -893,6 +896,152 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
     );
     $path = empty($parts['path']) ? '' : $parts['path'];
     return rtrim($path, '/') . '/';
+  }
+
+  /**
+   * Test that the endpoint is not redirected on an all-prefixed site.
+   *
+   * The Redirect module normalises routes by default. Where every language
+   * has a URL prefix, that turns a request for /router/translate-path into
+   * a 301 to the prefixed form, and a consumer that does not follow
+   * redirects loses path translation for the whole site.
+   */
+  public function testEndpointNotRedirectedOnAllPrefixedSite(): void {
+    \Drupal::configFactory()->getEditable('language.negotiation')
+      ->set('url.prefixes', ['en' => 'en', 'ca' => 'ca'])
+      ->save();
+    \Drupal::configFactory()->getEditable('redirect.settings')
+      ->set('route_normalizer_enabled', TRUE)
+      ->save();
+    drupal_flush_all_caches();
+
+    // Ask for the unprefixed endpoint the way a decoupled consumer does.
+    // Drupal would generate the prefixed form itself, so the URL is built
+    // by hand, and redirects are not followed so a 301 is visible.
+    $response = $this->getHttpClient()->request(
+      'GET',
+      $this->baseUrl . '/router/translate-path?path=/node--0&_format=json',
+      ['http_errors' => FALSE, 'allow_redirects' => FALSE]
+    );
+
+    $this->assertSame(200, $response->getStatusCode(), 'The endpoint must answer directly, not redirect to its prefixed form.');
+  }
+
+  /**
+   * Test that a published translation of an unpublished node is accessible.
+   *
+   * The access check must run on the translation the path asks for. When it
+   * runs on the default translation instead, a published translation of an
+   * unpublished node is refused. Reported in issue comments 93 and 94.
+   */
+  public function testPublishedTranslationOfUnpublishedContent(): void {
+    // The default translation is unpublished.
+    $node = $this->createNode([
+      'uid' => ['target_id' => $this->user->id()],
+      'type' => 'article',
+      'path' => '/node--unpublished-default',
+      'title' => 'Unpublished default',
+      'langcode' => 'en',
+      'status' => NodeInterface::NOT_PUBLISHED,
+    ]);
+
+    // The Catalan translation is published.
+    $node->addTranslation('ca', [
+      'title' => 'Publicat en català',
+      'path' => '/node--unpublished-default--ca',
+      'status' => NodeInterface::PUBLISHED,
+    ])->save();
+
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/ca/node--unpublished-default--ca',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $output = Json::decode($res);
+
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertEquals($node->uuid(), $output['entity']['uuid']);
+    $this->assertEquals('ca', $output['entity']['langcode']);
+    $this->assertEquals('Publicat en català', $output['label']);
+  }
+
+  /**
+   * Test that published node with unpublished translation is accessible.
+   */
+  public function testPublishedContentWithUnpublishedTranslation(): void {
+    $german = ConfigurableLanguage::createFromLangcode('de');
+    $german->save();
+
+    // Create the published node.
+    $values = [
+      'uid' => ['target_id' => $this->user->id()],
+      'type' => 'article',
+      'path' => '/node--article',
+      'title' => 'Published Article',
+      'langcode' => 'en',
+      'status' => NodeInterface::PUBLISHED,
+    ];
+    $node = $this->createNode($values);
+
+    // Test access to the published node.
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/node--article',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $output = Json::decode($res);
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertEquals($node->uuid(), $output['entity']['uuid']);
+    $this->assertEquals('en', $output['entity']['langcode']);
+
+    // Create the unpublished German translation.
+    $node->addTranslation('de', [
+      'title' => 'Veröffentlichter Artikel',
+      'status' => NodeInterface::NOT_PUBLISHED,
+    ])->save();
+
+    // Test access to the original published node.
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/node--article',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $output = Json::decode($res);
+    $this->assertSession()->statusCodeEquals(200);
+    $this->assertEquals($node->uuid(), $output['entity']['uuid']);
+    $this->assertFalse($output['isHomePath']);
+
+    // Test access to the unpublished German translation.
+    $res = $this->drupalGet(
+      Url::fromRoute('decoupled_router.path_translation'),
+      [
+        'query' => [
+          'path' => '/de/node--article',
+          '_format' => 'json',
+        ],
+      ]
+    );
+    $output = Json::decode($res);
+    $this->assertSession()->statusCodeEquals(403);
+    $this->assertEquals(
+      [
+        'message' => 'Access denied for entity.',
+        'details' => 'This user does not have access to view the resolved entity. Please authenticate and try again.',
+      ],
+      $output
+    );
   }
 
 }
