@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- [#3111456](https://www.drupal.org/project/decoupled_router/issues/3111456):
+  The `entity` object includes the `langcode` of the resolved translation,
+  and the `jsonapi.individual` URL is built in that language.
+
+### Fixed
+
+- [#3111456](https://www.drupal.org/project/decoupled_router/issues/3111456):
+  Paths in a language other than the default now resolve. When the path
+  has a language prefix, or the URL negotiation method reports a language
+  for it, such as by domain, aliases, redirects, the translation and the
+  home path check all use that language. The reported
+  `resolved` URL keeps the prefix. A path without a language still resolves
+  in the language of the translate-path request, as before. Crediting
+  chandu7929, oknate, bojan_dev, budalokko, serg.linkin, jsmakk, vhin0210
+  and yahyaalhamad. Also resolves
+  [#3328770](https://www.drupal.org/project/decoupled_router/issues/3328770).
+- A published translation of an unpublished entity is no longer denied. The
+  translation is selected before the access check.
+- On a site where every language has a prefix, the Redirect module no longer
+  answers `/router/translate-path` with a 301 to the prefixed form.
+
+### Changed
+
+- An entity with no translation in the requested language resolves to the
+  URL in its own language, the same URL core links to. Before, a redirect
+  followed on a language-prefixed translate-path request could resolve to
+  the URL in the request language.
+
 ## 2.0.7 (2026-08-19)
 
 ### Fixed

@@ -10,6 +10,7 @@ use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
+use Drupal\Core\PathProcessor\InboundPathProcessorInterface;
 use Drupal\decoupled_router\PathTranslatorEvent;
 use Drupal\path_alias\AliasManagerInterface;
 use Drupal\redirect\Exception\RedirectLoopException;
@@ -66,6 +67,30 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
     $request_query = $original_parsed_url['query'];
     $source_path = $this->cleanSubdirInPath($original_parsed_url['path'], $event->getRequest());
 
+    // Redirects are stored without a language prefix. When the path carries
+    // one, strip it and match in the language the prefix negotiates. The
+    // negotiated request language is the fallback.
+    $langcode = $this->languageManager->getCurrentLanguage()->getId();
+    $prefix = '';
+    $method = $this->getUrlNegotiationMethod();
+    if ($method instanceof InboundPathProcessorInterface) {
+      $source_request = $this->createNegotiationRequest($source_path, $event->getRequest());
+      $path_langcode = $method->getLangcode($source_request);
+      if ($path_langcode) {
+        // The language of the path wins over the negotiated request
+        // language, also when the path carries no prefix.
+        $langcode = $path_langcode;
+        $inner_path = $method->processInbound($source_path, $source_request);
+        if ($inner_path !== $source_path) {
+          $detected_prefix = $this->splitLanguagePrefix($source_path, $inner_path);
+          if ($detected_prefix !== NULL) {
+            $prefix = $detected_prefix;
+            $source_path = $inner_path;
+          }
+        }
+      }
+    }
+
     $cacheable_metadata = new CacheableMetadata();
     $cacheable_metadata->addCacheableDependency($this->configFactory->get('redirect.settings'));
 
@@ -73,7 +98,7 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
       $redirect = $this->redirectRepository->findMatchingRedirect(
         $source_path,
         $request_query,
-        $this->languageManager->getCurrentLanguage()->getId(),
+        $langcode,
         $cacheable_metadata
       );
     }
@@ -99,6 +124,19 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
       $redirect_url->setOption('query', (array) $redirect_url->getOption('query') + $request_query);
     }
 
+    // Build the target in the language of the path prefix. A target that has
+    // a route is stamped with the language of the current request otherwise,
+    // which on a site where every language has a prefix means the fallback
+    // language, and the target then carries the wrong prefix. Only do this
+    // when a prefix was actually stripped, since a negotiation method can
+    // report a language for a path that carries no prefix at all.
+    if ($prefix !== '' && !$redirect_url->isExternal()) {
+      $path_language = $this->languageManager->getLanguage($langcode);
+      if ($path_language) {
+        $redirect_url->setOption('language', $path_language);
+      }
+    }
+
     $redirect_url_string = $redirect_url->toString();
 
     // Preserve the fragment as per RFC 7231, see
@@ -108,6 +146,22 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
     if (isset($original_parsed_url['fragment']) && empty(UrlHelper::parse($redirect_url_string)['fragment'])) {
       $redirect_url->setOption('fragment', $original_parsed_url['fragment']);
       $redirect_url_string = $redirect_url->toString();
+    }
+
+    // Keep the path prefix on an internal redirect target. Without it the
+    // route level cannot resolve a destination alias in the path language.
+    if ($prefix !== '' && !$redirect_url->isExternal()) {
+      // The generated URL carries the subdirectory Drupal is installed in.
+      // The prefix belongs behind it, so a site below /subdir serves
+      // /subdir/de/user/login and not /de/subdir/user/login.
+      $base_path = rtrim($event->getRequest()->getBasePath(), '/');
+      $target = $redirect_url_string;
+      if ($base_path !== '' && str_starts_with($target, $base_path)) {
+        $target = substr($target, strlen($base_path));
+      }
+      if ($target !== $prefix && !str_starts_with($target, "$prefix/")) {
+        $redirect_url_string = $base_path . $prefix . $target;
+      }
     }
 
     $redirects_trace[] = [
@@ -129,8 +183,20 @@ class RedirectPathTranslatorSubscriber extends RouterPathTranslatorSubscriber {
       // We should return the redirect data.
       $response->setStatusCode(200);
       $cacheable_metadata->addCacheableDependency($this->decoupledRouterConfig);
+      // The path prefix lives only on the string, so the string is the
+      // source of truth for the reported target. It must match the
+      // redirect trace above.
+      $resolved = $redirect_url_string;
+      if (!$redirect_url->isExternal() && $this->decoupledRouterConfig->get('absolute_resolved_urls')) {
+        $resolved = $event->getRequest()->getSchemeAndHttpHost() . $resolved;
+      }
+      // Compare the home path in the language of the path prefix.
+      $language = $this->languageManager->getLanguage($langcode);
+      if ($language && !$redirect_url->isExternal()) {
+        $redirect_url->setOption('language', $language);
+      }
       $content = [
-        'resolved' => $redirect_url->setAbsolute($this->decoupledRouterConfig->get('absolute_resolved_urls'))->toString(TRUE)->getGeneratedUrl(),
+        'resolved' => $resolved,
         'isExternal' => FALSE,
         'isHomePath' => $this->resolvedPathIsHomePath($redirect_url, $cacheable_metadata),
       ];
