@@ -53,6 +53,8 @@ variables:
   OPT_IN_TEST_NEXT_MAJOR: 1
   CORE_PREVIOUS_PHP_MIN: 8.1
   _PHPUNIT_EXTRA: '--no-coverage --configuration=phpunit.gitlab-ci.xml'
+  # gitlab_templates 1.17.0 made run-tests.sh the default. Keep the phpunit binary.
+  _PHPUNIT_CONCURRENT: 0
 
 cspell:
   allow_failure: false
