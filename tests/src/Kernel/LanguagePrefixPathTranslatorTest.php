@@ -370,6 +370,103 @@ final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
   }
 
   /**
+   * Tests that an absolute redirect target keeps the inbound scheme.
+   *
+   * The subscriber builds the reported target from the prefixed string, not
+   * from the Url object. The scheme and host come from the inbound request,
+   * so a call over https must report an https target.
+   */
+  public function testPrefixedRedirectKeepsInboundScheme(): void {
+    $this->config('decoupled_router.settings')
+      ->set('absolute_resolved_urls', TRUE)
+      ->save();
+
+    $redirect = Redirect::create(['status_code' => 301]);
+    $redirect->setSource('/zum-login');
+    $redirect->setRedirect('/user/login');
+    $redirect->setLanguage('de');
+    $redirect->save();
+
+    $data = $this->translateOnHost('/de/zum-login', 'https://localhost');
+
+    self::assertSame('https://localhost/de/user/login', $data['resolved'] ?? NULL, var_export($data, TRUE));
+    self::assertFalse($data['isExternal']);
+  }
+
+  /**
+   * Tests the home path check on a prefixed redirect with no entity route.
+   *
+   * The reported target carries the prefix. The home path check compares
+   * the Url object with the front page in the same language, so the prefix
+   * must not change the result.
+   */
+  public function testPrefixedRedirectToFrontPageIsHomePath(): void {
+    $this->config('system.site')->set('page.front', '/user/login')->save();
+
+    $to_front = Redirect::create(['status_code' => 301]);
+    $to_front->setSource('/zum-start');
+    $to_front->setRedirect('/user/login');
+    $to_front->setLanguage('de');
+    $to_front->save();
+
+    $elsewhere = Redirect::create(['status_code' => 301]);
+    $elsewhere->setSource('/zum-passwort');
+    $elsewhere->setRedirect('/user/password');
+    $elsewhere->setLanguage('de');
+    $elsewhere->save();
+
+    $data = $this->translate('/de/zum-start');
+    self::assertSame('/de/user/login', $data['redirect'][0]['to'] ?? NULL, var_export($data, TRUE));
+    self::assertTrue($data['isHomePath']);
+
+    $data = $this->translate('/de/zum-passwort');
+    self::assertSame('/de/user/password', $data['redirect'][0]['to'] ?? NULL, var_export($data, TRUE));
+    self::assertFalse($data['isHomePath']);
+  }
+
+  /**
+   * Tests the alias of a translated front page in its own language.
+   *
+   * The front page is an English entity with a German translation. Its
+   * German alias must resolve to the German translation and report the
+   * home path, see #3328770.
+   */
+  public function testPrefixedAliasOfTranslatedFrontPageIsHomePath(): void {
+    // Viewing a translation that is not the default one needs its own
+    // permission, see EntityTestAccessControlHandler.
+    user_role_grant_permissions(
+      RoleInterface::ANONYMOUS_ID,
+      ['view test entity translations']
+    );
+
+    /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
+    $entity = $this->container->get('entity_type.manager')
+      ->getStorage('entity_test_mul')
+      ->create(['name' => 'Home', 'langcode' => 'en']);
+    $entity->save();
+    $entity->addTranslation('de', ['name' => 'Startseite'])->save();
+
+    $alias_storage = $this->container->get('entity_type.manager')->getStorage('path_alias');
+    foreach (['en' => '/home', 'de' => '/startseite'] as $langcode => $alias) {
+      $alias_storage->create([
+        'path' => '/entity_test_mul/manage/' . $entity->id(),
+        'alias' => $alias,
+        'langcode' => $langcode,
+      ])->save();
+    }
+    $this->config('system.site')
+      ->set('page.front', '/entity_test_mul/manage/' . $entity->id())
+      ->save();
+
+    $data = $this->translate('/de/startseite');
+
+    self::assertArrayHasKey('entity', $data, var_export($data, TRUE));
+    self::assertSame('de', $data['entity']['langcode']);
+    self::assertStringEndsWith('/de/startseite', $data['resolved']);
+    self::assertTrue($data['isHomePath']);
+  }
+
+  /**
    * Tests that a bare language prefix resolves the front page #3111456.
    *
    * A decoupled frontend asks for the prefixed homepage as its first call:
