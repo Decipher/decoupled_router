@@ -10,10 +10,10 @@ use PHPUnit\Framework\Attributes\TestWith;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Cache\NullBackend;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
-use Drupal\Core\Entity\RevisionableInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Url;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\entity_test\Entity\EntityTestRev;
 use Drupal\user\RoleInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -101,19 +101,22 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
    * @param string $alias
    *   The path alias of the entity.
    *
-   * @return \Drupal\Core\Entity\RevisionableInterface[]
+   * @return array{\Drupal\entity_test\Entity\EntityTestRev, \Drupal\entity_test\Entity\EntityTestRev}
    *   The default revision and the pending revision.
    */
   protected function createEntityWithDraft(string $draft_label, string $alias = '/published'): array {
-    $storage = $this->container->get('entity_type.manager')->getStorage('entity_test_rev');
-    $published = $storage->create([
+    $published = EntityTestRev::create([
       'name' => 'published',
       'path' => $alias,
     ]);
     $published->save();
 
-    $draft = $storage->createRevision($published, FALSE);
-    assert($draft instanceof RevisionableInterface);
+    $draft = EntityTestRev::load($published->id());
+    if ($draft === NULL) {
+      self::fail('The test entity was not saved.');
+    }
+    $draft->setNewRevision();
+    $draft->isDefaultRevision(FALSE);
     $draft->set('name', $draft_label);
     $draft->save();
 
