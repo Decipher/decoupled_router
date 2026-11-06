@@ -155,7 +155,6 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         $entity = $this->container->get('entity.repository')->getTranslationFromContext($entity, $this->langcode);
       }
     }
-    $resolved_url_options['language'] = $entity->language();
 
     // Swap in the revision the resourceVersion parameter asks for, so the
     // label and the JSON:API link describe the version the client will fetch.
@@ -177,16 +176,25 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       }
     }
 
+    // Read after the revision is chosen. A revision that has no translation in
+    // this language falls back to another one, so the language is not known
+    // until the entity being described is final.
+    $resolved_url_options['language'] = $entity->language();
+
     $response->addCacheableDependency($entity);
     if ($entity->getEntityType() instanceof ContentEntityType) {
       $can_view = $this->checkViewAccess($entity);
+      // Recorded before the response is decided, so that an allowed response
+      // carries the same cache contexts as a refused one. Revision access can
+      // differ per user, and without this a cached draft label is served to a
+      // user the access check would refuse.
+      $response->addCacheableDependency($can_view);
       if (!$can_view->isAllowed()) {
         $response->setData([
           'message' => 'Access denied for entity.',
           'details' => 'This user does not have access to view the resolved entity. Please authenticate and try again.',
         ]);
         $response->setStatusCode(403);
-        $response->addCacheableDependency($can_view);
         return;
       }
     }
@@ -643,7 +651,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     if (!is_string($version)) {
       return NULL;
     }
-    if (in_array($version, ['rel:working-copy', 'rel:latest-version'], TRUE) || preg_match('/^id:[1-9]\d*$/', $version)) {
+    if (in_array($version, ['rel:working-copy', 'rel:latest-version'], TRUE) || preg_match('/^id:[1-9]\d*\z/', $version)) {
       return $version;
     }
 

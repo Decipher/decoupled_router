@@ -263,4 +263,20 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
     self::assertArrayNotHasKey('label', $data);
   }
 
+  /**
+   * Tests that a revision ID with a trailing newline is not accepted.
+   *
+   * A dollar sign in the pattern matches before a final newline, so the value
+   * read from the query string has to be anchored at the very end.
+   */
+  public function testResourceVersionWithTrailingNewlineIsIgnored(): void {
+    [, $draft] = $this->createEntityWithDraft('draft, view all revisions');
+
+    [$status, $data] = $this->translate('/published', 'id:' . $draft->getRevisionId() . "\n");
+
+    self::assertSame(200, $status, var_export($data, TRUE));
+    self::assertSame('published', $data['label']);
+    self::assertStringNotContainsString('resourceVersion', $data['jsonapi']['individual']);
+  }
+
 }
