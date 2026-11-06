@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace Drupal\decoupled_router\EventSubscriber;
 
 use Drupal\Component\Utility\UrlHelper;
+use Drupal\Core\Access\AccessResultInterface;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\Config\Config;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\ContentEntityType;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityMalformedException;
+use Drupal\Core\Entity\RevisionableInterface;
+use Drupal\Core\Entity\RevisionableStorageInterface;
 use Drupal\Core\Entity\TranslatableInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\PathProcessor\InboundPathProcessorInterface;
+use Drupal\Core\Routing\RouteMatch;
 use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
@@ -42,6 +46,13 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    * The decoupled_router.settings config.
    */
   protected Config $decoupledRouterConfig;
+
+  /**
+   * The JSON:API query parameter that selects a revision.
+   *
+   * @see https://www.drupal.org/docs/core-modules-and-themes/core-modules/jsonapi-module/revisions
+   */
+  protected const RESOURCE_VERSION_PARAMETER = 'resourceVersion';
 
   /**
    * Determines if a message should be logged if an entity not found.
@@ -144,18 +155,46 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         $entity = $this->container->get('entity.repository')->getTranslationFromContext($entity, $this->langcode);
       }
     }
+
+    // Swap in the revision the resourceVersion parameter asks for, so the
+    // label and the JSON:API link describe the version the client will fetch.
+    // This runs after the translation is selected, because the revision is
+    // loaded in the language of the entity handed to it.
+    $response->addCacheableDependency(
+      (new CacheableMetadata())->setCacheContexts(['url.query_args:' . static::RESOURCE_VERSION_PARAMETER])
+    );
+    $resource_version = $this->getResourceVersion($event->getRequest());
+    if ($resource_version !== NULL) {
+      $revision = $this->loadResourceVersion($entity, $resource_version);
+      if (!$revision instanceof EntityInterface) {
+        // Not a revision of this entity. Describe the default revision, and
+        // keep the parameter off the link so the two still agree.
+        $resource_version = NULL;
+      }
+      else {
+        $entity = $revision;
+      }
+    }
+
+    // Read after the revision is chosen. A revision that has no translation in
+    // this language falls back to another one, so the language is not known
+    // until the entity being described is final.
     $resolved_url_options['language'] = $entity->language();
 
     $response->addCacheableDependency($entity);
     if ($entity->getEntityType() instanceof ContentEntityType) {
-      $can_view = $entity->access('view', NULL, TRUE);
+      $can_view = $this->checkViewAccess($entity);
+      // Recorded before the response is decided, so that an allowed response
+      // carries the same cache contexts as a refused one. Revision access can
+      // differ per user, and without this a cached draft label is served to a
+      // user the access check would refuse.
+      $response->addCacheableDependency($can_view);
       if (!$can_view->isAllowed()) {
         $response->setData([
           'message' => 'Access denied for entity.',
           'details' => 'This user does not have access to view the resolved entity. Please authenticate and try again.',
         ]);
         $response->setStatusCode(403);
-        $response->addCacheableDependency($can_view);
         return;
       }
     }
@@ -240,15 +279,25 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         ]
       )->toString(TRUE);
       $route_name = sprintf('jsonapi.%s.individual', $type_name);
+      $individual_options = [
+        'absolute' => TRUE,
+        'language' => $entity->language(),
+      ];
+      if ($resource_version !== NULL) {
+        // Passed as a query option so that other outbound path processors,
+        // such as language negotiation, can add their own parameters to the
+        // same query string. JSON:API builds its own version links this way.
+        // @see \Drupal\jsonapi\JsonApiResource\ResourceObject::createFromEntity()
+        $individual_options['query'] = [
+          static::RESOURCE_VERSION_PARAMETER => $resource_version,
+        ];
+      }
       $individual = Url::fromRoute(
         $route_name,
         [
           static::getEntityRouteParameterName($route_name, $entity_type_id) => $entity->uuid(),
         ],
-        [
-          'absolute' => TRUE,
-          'language' => $entity->language(),
-        ]
+        $individual_options
       )->toString(TRUE);
       $response->addCacheableDependency($entry_point_url);
       $response->addCacheableDependency($individual);
@@ -585,6 +634,128 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     catch (PluginNotFoundException) {
       return NULL;
     }
+  }
+
+  /**
+   * Gets the resourceVersion the client asked for.
+   *
+   * @param \Symfony\Component\HttpFoundation\Request $request
+   *   The request the path translation call arrived on.
+   *
+   * @return string|null
+   *   A version identifier JSON:API understands, or NULL.
+   */
+  protected function getResourceVersion(Request $request): ?string {
+    // Read through all(): get() throws when a caller sends an array.
+    $version = $request->query->all()[static::RESOURCE_VERSION_PARAMETER] ?? NULL;
+    if (!is_string($version)) {
+      return NULL;
+    }
+    if (in_array($version, ['rel:working-copy', 'rel:latest-version'], TRUE) || preg_match('/^id:[1-9]\d*\z/', $version)) {
+      return $version;
+    }
+
+    return NULL;
+  }
+
+  /**
+   * Loads the revision of an entity that a resourceVersion identifies.
+   *
+   * Mirrors the version negotiators in JSON:API, so the label reported here
+   * belongs to the revision the JSON:API link returns.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity the path resolved to, in the language of the path.
+   * @param string $resource_version
+   *   A value returned by getResourceVersion().
+   *
+   * @return \Drupal\Core\Entity\EntityInterface|null
+   *   The revision in the language of $entity, or NULL when the entity has no
+   *   such revision.
+   *
+   * @see \Drupal\jsonapi\Revisions\VersionByRel
+   * @see \Drupal\jsonapi\Revisions\VersionById
+   */
+  protected function loadResourceVersion(EntityInterface $entity, string $resource_version): ?EntityInterface {
+    if (!$entity instanceof RevisionableInterface) {
+      return NULL;
+    }
+    $storage = $this->container->get('entity_type.manager')->getStorage($entity->getEntityTypeId());
+    if (!$storage instanceof RevisionableStorageInterface) {
+      return NULL;
+    }
+
+    [, $value] = explode(':', $resource_version, 2);
+    $revision_id = match (TRUE) {
+      $value === 'latest-version' => $entity->getLoadedRevisionId(),
+      $value === 'working-copy' => $storage->getLatestRevisionId($entity->id()),
+      default => (int) $value,
+    };
+    if (!$revision_id) {
+      return NULL;
+    }
+    $revision = (int) $revision_id === (int) $entity->getLoadedRevisionId()
+      ? $entity
+      : $storage->loadRevision($revision_id);
+    // A revision ID is global to the entity type. Refuse one that belongs to
+    // a different entity rather than describe that entity at this path.
+    if (!$revision instanceof RevisionableInterface || (string) $revision->id() !== (string) $entity->id()) {
+      return NULL;
+    }
+
+    if ($revision instanceof TranslatableInterface) {
+      $langcode = $entity->language()->getId();
+      $revision = $revision->hasTranslation($langcode)
+        ? $revision->getTranslation($langcode)
+        : $this->container->get('entity.repository')->getTranslationFromContext($revision, $langcode);
+    }
+
+    return $revision;
+  }
+
+  /**
+   * Checks view access the way JSON:API does for the same revision.
+   *
+   * A pending revision needs more than view access to the entity. Without
+   * the same checks JSON:API makes, this endpoint would report the draft
+   * label to a client that gets a 403 from the JSON:API link.
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity or revision to check.
+   *
+   * @return \Drupal\Core\Access\AccessResultInterface
+   *   The access result.
+   *
+   * @see \Drupal\jsonapi\Access\EntityAccessChecker::checkRevisionViewAccess()
+   */
+  protected function checkViewAccess(EntityInterface $entity): AccessResultInterface {
+    $access = $entity->access('view', NULL, TRUE);
+    if (!$entity instanceof RevisionableInterface || $entity->isDefaultRevision()) {
+      return $access;
+    }
+
+    $access = $access->andIf($entity->access('view all revisions', NULL, TRUE));
+    if (
+      $entity->getEntityType()->hasLinkTemplate('latest-version')
+      && $entity->isLatestRevision()
+      && $this->container->has('access_check.latest_revision')
+      && $this->moduleHandler->moduleExists('jsonapi')
+    ) {
+      // The content_moderation checker reads the entity off a route match.
+      // Hand it a copy of the JSON:API route, as JSON:API itself does.
+      $type_name = $this->container->get('jsonapi.resource_type.repository')
+        ->get($entity->getEntityTypeId(), $entity->bundle())
+        ->getTypeName();
+      $route_name = sprintf('jsonapi.%s.individual', $type_name);
+      $route = clone $this->container->get('router.route_provider')->getRouteByName($route_name);
+      $route->setOption('_content_moderation_entity_type', 'entity');
+      $route_match = new RouteMatch($route_name, $route, ['entity' => $entity], ['entity' => $entity->uuid()]);
+      $access = $access->andIf(
+        $this->container->get('access_check.latest_revision')->access($route, $route_match, $this->container->get('current_user'))
+      );
+    }
+
+    return $access;
   }
 
 }
