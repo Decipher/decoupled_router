@@ -11,12 +11,17 @@ use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Entity\ContentEntityType;
 use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityMalformedException;
+use Drupal\Core\Entity\TranslatableInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
+use Drupal\Core\PathProcessor\InboundPathProcessorInterface;
 use Drupal\Core\Routing\RouteObjectInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Url;
 use Drupal\Core\Utility\Error;
+use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\decoupled_router\PathTranslatorEvent;
+use Drupal\language\LanguageNegotiationMethodInterface;
+use Drupal\language\Plugin\LanguageNegotiation\LanguageNegotiationUrl;
 use Drupal\path_alias\AliasManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -42,6 +47,11 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
    * Determines if a message should be logged if an entity not found.
    */
   protected const LOG_ENTITY_NOT_FOUND = TRUE;
+
+  /**
+   * The langcode if added as a prefix to the path.
+   */
+  protected ?string $langcode = NULL;
 
   /**
    * RouterPathTranslatorSubscriber constructor.
@@ -96,6 +106,13 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     }
 
     $path = $this->cleanQueriesAndFragment($path);
+
+    // Get the system path from the alias if applicable. The alias lookup
+    // needs the bare path, so this runs after the query string and the
+    // fragment are removed.
+    if ($this->container->get('language_manager')->isMultilingual()) {
+      $path = $this->getPathFromAlias($path, $event->getRequest());
+    }
     try {
       $match_info = $this->router->match($path);
     }
@@ -117,6 +134,18 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       }
       return;
     }
+
+    // Get entity translation if applicable.
+    if (!empty($this->langcode)) {
+      if ($entity instanceof TranslatableInterface && $entity->hasTranslation($this->langcode)) {
+        $entity = $entity->getTranslation($this->langcode);
+      }
+      else {
+        $entity = $this->container->get('entity.repository')->getTranslationFromContext($entity, $this->langcode);
+      }
+    }
+    $resolved_url_options['language'] = $entity->language();
+
     $response->addCacheableDependency($entity);
     if ($entity->getEntityType() instanceof ContentEntityType) {
       $can_view = $entity->access('view', NULL, TRUE);
@@ -176,6 +205,12 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         'uuid' => $entity->uuid(),
       ],
     ];
+
+    // Only add langcode if available.
+    if ($entity instanceof TranslatableInterface) {
+      $output['entity']['langcode'] = $entity->language()->getId();
+    }
+
     if ($label_accessible->isAllowed()) {
       $output['label'] = $entity->label();
     }
@@ -191,23 +226,37 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
       $rt_repo = $this->container->get('jsonapi.resource_type.repository');
       $rt = $rt_repo->get($entity_type_id, $entity->bundle());
       $type_name = $rt->getTypeName();
-      $jsonapi_base_path = $this->container->getParameter('jsonapi.base_path');
-      $entry_point_url = Url::fromRoute('jsonapi.resource_list', [], ['absolute' => TRUE])->toString(TRUE);
+      $jsonapi_base_path = Url::fromRoute(
+        'jsonapi.resource_list',
+        [],
+        ['language' => $entity->language()]
+      )->toString(TRUE);
+      $entry_point_url = Url::fromRoute(
+        'jsonapi.resource_list',
+        [],
+        [
+          'absolute' => TRUE,
+          'language' => $entity->language(),
+        ]
+      )->toString(TRUE);
       $route_name = sprintf('jsonapi.%s.individual', $type_name);
       $individual = Url::fromRoute(
         $route_name,
         [
           static::getEntityRouteParameterName($route_name, $entity_type_id) => $entity->uuid(),
         ],
-        ['absolute' => TRUE]
+        [
+          'absolute' => TRUE,
+          'language' => $entity->language(),
+        ]
       )->toString(TRUE);
       $response->addCacheableDependency($entry_point_url);
       $response->addCacheableDependency($individual);
       $output['jsonapi'] = [
         'individual' => $individual->getGeneratedUrl(),
         'resourceName' => $type_name,
-        'pathPrefix' => trim($jsonapi_base_path, '/'),
-        'basePath' => $jsonapi_base_path,
+        'pathPrefix' => trim($jsonapi_base_path->getGeneratedUrl(), '/'),
+        'basePath' => $jsonapi_base_path->getGeneratedUrl(),
         'entryPoint' => $entry_point_url->getGeneratedUrl(),
       ];
       $output['meta'] = [
@@ -391,7 +440,15 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     }
     $home_path = $this->configFactory->get('system.site')->get('page.front');
     if ($resolved_url instanceof Url) {
-      $home_url = Url::fromUserInput($home_path)->setAbsolute((bool) $resolved_url->getOption('absolute'))->toString();
+      // Compare in the language of the resolved URL. Without this a prefixed
+      // home path never matches the home URL built for the request language.
+      $home_url_object = Url::fromUserInput($home_path)
+        ->setAbsolute((bool) $resolved_url->getOption('absolute'));
+      $language = $resolved_url->getOption('language');
+      if ($language) {
+        $home_url_object->setOption('language', $language);
+      }
+      $home_url = $home_url_object->toString();
       $resolved_url = $resolved_url->toString();
     }
     else {
@@ -400,6 +457,134 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     }
 
     return $resolved_url === $home_url;
+  }
+
+  /**
+   * Convert an alias to its source path.
+   *
+   * The router matches with the negotiated request language, so an alias
+   * behind another language's prefix does not resolve. This method asks the
+   * URL negotiation plugin for the path language, resolves the alias in that
+   * language, and puts the prefix back.
+   *
+   * Language negotiation is pluggable. The URL prefix is only one method, so
+   * this method uses the negotiation plugin itself and reads no prefix
+   * configuration. When URL negotiation is not enabled, the path is returned
+   * unchanged.
+   *
+   * @param string $path
+   *   The input path string.
+   * @param \Symfony\Component\HttpFoundation\Request $inbound_request
+   *   The request the path translation call arrived on.
+   *
+   * @return string
+   *   The output path string.
+   */
+  protected function getPathFromAlias(string $path, Request $inbound_request): string {
+    $this->langcode = NULL;
+    $method = $this->getUrlNegotiationMethod();
+    if (!$method instanceof InboundPathProcessorInterface) {
+      return $path;
+    }
+    $router_request = $this->createNegotiationRequest($path, $inbound_request);
+    $langcode = $method->getLangcode($router_request);
+    if (!$langcode) {
+      return $path;
+    }
+    $inner_path = $method->processInbound($path, $router_request);
+    if ($inner_path === $path) {
+      // The plugin found no prefix to strip, so there is no alias to re-map.
+      // It still reported a language for this path, by domain or by session
+      // for example, and the translation lookup needs it. The redirect
+      // subscriber uses the language on the same terms.
+      $this->langcode = $langcode;
+      return $path;
+    }
+    $prefix = $this->splitLanguagePrefix($path, $inner_path);
+    if ($prefix === NULL) {
+      // The prefix could not be identified. Leave the path alone.
+      return $path;
+    }
+    $this->langcode = $langcode;
+    $resolved = $this->aliasManager->getPathByAlias($inner_path, $langcode);
+
+    return $prefix . ($resolved === '/' ? '' : $resolved);
+  }
+
+  /**
+   * Builds the request that the negotiation plugin reads a language from.
+   *
+   * The plugin needs more than the path. Domain negotiation reads the host,
+   * so a request built from the path alone always looks like the default
+   * domain and reports no language at all. Keep the scheme and the host of
+   * the call that arrived, so the path is read on the site it was asked for.
+   *
+   * @param string $path
+   *   The path to build the request for.
+   * @param \Symfony\Component\HttpFoundation\Request $inbound_request
+   *   The request the path translation call arrived on.
+   *
+   * @return \Symfony\Component\HttpFoundation\Request
+   *   The request for the negotiation plugin.
+   */
+  protected function createNegotiationRequest(string $path, Request $inbound_request): Request {
+    return Request::create($inbound_request->getSchemeAndHttpHost() . $path);
+  }
+
+  /**
+   * Gets the language prefix that the negotiation plugin removed from a path.
+   *
+   * The plugin normalises the path it returns, so the inner path is not
+   * always a literal tail of the input. A trailing slash is the common case:
+   * "/de/node/1/" comes back as "/node/1". Counting characters then leaves
+   * the separator in the prefix and builds "/de//node/1", which matches no
+   * route. Compare the two paths without their trailing slashes instead.
+   *
+   * @param string $path
+   *   The path as it arrived, including the prefix.
+   * @param string $inner_path
+   *   The path the plugin returned, without the prefix.
+   *
+   * @return string|null
+   *   The prefix, or NULL when it cannot be identified.
+   */
+  protected function splitLanguagePrefix(string $path, string $inner_path): ?string {
+    $path = rtrim($path, '/');
+    $inner_path = rtrim($inner_path, '/');
+    if ($inner_path === '') {
+      // The path is only the prefix.
+      return $path;
+    }
+    if (!str_ends_with($path, $inner_path)) {
+      return NULL;
+    }
+
+    return rtrim(substr($path, 0, -strlen($inner_path)), '/');
+  }
+
+  /**
+   * Get the URL language negotiation method plugin, if the site has one.
+   *
+   * @return \Drupal\language\LanguageNegotiationMethodInterface|null
+   *   The plugin, or NULL when URL negotiation is not available.
+   */
+  protected function getUrlNegotiationMethod(): ?LanguageNegotiationMethodInterface {
+    if (!$this->container->has('language_negotiator')) {
+      return NULL;
+    }
+    /** @var \Drupal\language\LanguageNegotiatorInterface $negotiator */
+    $negotiator = $this->container->get('language_negotiator');
+    // The negotiator receives the current user from LanguageRequestSubscriber,
+    // which only runs for an HTTP request. Code that dispatches the path
+    // translation event from Drush, cron or a queue worker leaves it unset,
+    // and the plugin then fails on a NULL user. Set it here as well.
+    $negotiator->setCurrentUser($this->container->get('current_user'));
+    try {
+      return $negotiator->getNegotiationMethodInstance(LanguageNegotiationUrl::METHOD_ID);
+    }
+    catch (PluginNotFoundException) {
+      return NULL;
+    }
   }
 
 }
