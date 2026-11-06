@@ -7,6 +7,7 @@ namespace Drupal\Tests\decoupled_router\Kernel;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Component\Serialization\Json;
+use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Cache\NullBackend;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Url;
@@ -210,7 +211,8 @@ final class ResourceVersionModerationPathTranslatorTest extends KernelTestBase {
     self::assertSame(200, $status, var_export($data, TRUE));
     self::assertSame('draft', $data['label']);
     self::assertSame((string) $node->id(), (string) ($data['entity']['id'] ?? ''));
-    self::assertStringEndsWith('?resourceVersion=rel%3Aworking-copy', $data['jsonapi']['individual']);
+    $expected = UrlHelper::buildQuery(['resourceVersion' => 'rel:working-copy']);
+    self::assertStringEndsWith('?' . $expected, $data['jsonapi']['individual']);
   }
 
   /**

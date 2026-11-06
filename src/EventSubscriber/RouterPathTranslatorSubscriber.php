@@ -167,7 +167,7 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
     $resource_version = $this->getResourceVersion($event->getRequest());
     if ($resource_version !== NULL) {
       $revision = $this->loadResourceVersion($entity, $resource_version);
-      if ($revision === NULL) {
+      if (!$revision instanceof EntityInterface) {
         // Not a revision of this entity. Describe the default revision, and
         // keep the parameter off the link so the two still agree.
         $resource_version = NULL;

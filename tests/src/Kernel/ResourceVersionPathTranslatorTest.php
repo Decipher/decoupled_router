@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\Attributes\TestWith;
 use Drupal\Component\Serialization\Json;
+use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Cache\NullBackend;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Field\BaseFieldDefinition;
@@ -160,7 +161,8 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
     self::assertSame('draft, view all revisions', $data['label']);
     self::assertSame($published->id(), $data['entity']['id']);
     self::assertStringEndsWith(
-      '/jsonapi/entity_test_rev/entity_test_rev/' . $published->uuid() . '?resourceVersion=rel%3Aworking-copy',
+      '/jsonapi/entity_test_rev/entity_test_rev/' . $published->uuid()
+      . '?' . UrlHelper::buildQuery(['resourceVersion' => 'rel:working-copy']),
       $data['jsonapi']['individual']
     );
   }
@@ -191,7 +193,8 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
 
     self::assertSame(200, $status, var_export($data, TRUE));
     self::assertSame('draft, view all revisions', $data['label']);
-    self::assertStringEndsWith('?resourceVersion=id%3A' . $draft->getRevisionId(), $data['jsonapi']['individual']);
+    $expected = UrlHelper::buildQuery(['resourceVersion' => 'id:' . $draft->getRevisionId()]);
+    self::assertStringEndsWith('?' . $expected, $data['jsonapi']['individual']);
   }
 
   /**
@@ -213,6 +216,10 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
 
   /**
    * Tests that a version JSON:API does not understand is dropped.
+   *
+   * @testWith ["rel:bogus"]
+   *           ["id:abc"]
+   *           ["bogus"]
    */
   #[TestWith(['rel:bogus'])]
   #[TestWith(['id:abc'])]
@@ -237,7 +244,8 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
 
     self::assertSame(200, $status, var_export($data, TRUE));
     self::assertSame('published', $data['label']);
-    self::assertStringEndsWith('?resourceVersion=rel%3Alatest-version', $data['jsonapi']['individual']);
+    $expected = UrlHelper::buildQuery(['resourceVersion' => 'rel:latest-version']);
+    self::assertStringEndsWith('?' . $expected, $data['jsonapi']['individual']);
   }
 
   /**
