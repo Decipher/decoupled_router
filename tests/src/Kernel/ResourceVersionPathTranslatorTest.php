@@ -8,11 +8,13 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\Attributes\TestWith;
 use Drupal\Component\Serialization\Json;
+use Drupal\Component\Utility\UrlHelper;
 use Drupal\Core\Cache\NullBackend;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Url;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\entity_test\Entity\EntityTest;
 use Drupal\entity_test\Entity\EntityTestRev;
 use Drupal\user\RoleInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -85,6 +87,13 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
     ]);
 
     $this->installEntitySchema('entity_test_rev');
+
+    // entity_test is not revisionable, so it covers the case where a client
+    // sends resourceVersion for an entity that cannot have revisions.
+    $this->container->get('state')->set('entity_test.additional_base_field_definitions', [
+      'path' => BaseFieldDefinition::create('path')->setComputed(TRUE),
+    ]);
+    $this->installEntitySchema('entity_test');
     $this->installEntitySchema('path_alias');
 
     user_role_grant_permissions(
@@ -160,7 +169,30 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
     self::assertSame('draft, view all revisions', $data['label']);
     self::assertSame($published->id(), $data['entity']['id']);
     self::assertStringEndsWith(
-      '/jsonapi/entity_test_rev/entity_test_rev/' . $published->uuid() . '?resourceVersion=rel:working-copy',
+      '/jsonapi/entity_test_rev/entity_test_rev/' . $published->uuid()
+      . '?' . UrlHelper::buildQuery(['resourceVersion' => 'rel:working-copy']),
+      $data['jsonapi']['individual']
+    );
+  }
+
+  /**
+   * Tests that resourceVersion is dropped for an entity with no revisions.
+   */
+  public function testResourceVersionDroppedForNonRevisionableEntity(): void {
+    $entity = EntityTest::create([
+      'name' => 'not revisionable',
+      'path' => '/not-revisionable',
+    ]);
+    $entity->save();
+
+    [$status, $data] = $this->translate('/not-revisionable', 'rel:working-copy');
+
+    self::assertSame(200, $status, var_export($data, TRUE));
+    self::assertSame('not revisionable', $data['label']);
+    // The entity has no revisions to choose from, so the parameter is left
+    // off the link rather than handed on for JSON:API to refuse.
+    self::assertStringEndsWith(
+      '/jsonapi/entity_test/entity_test/' . $entity->uuid(),
       $data['jsonapi']['individual']
     );
   }
@@ -191,7 +223,8 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
 
     self::assertSame(200, $status, var_export($data, TRUE));
     self::assertSame('draft, view all revisions', $data['label']);
-    self::assertStringEndsWith('?resourceVersion=id:' . $draft->getRevisionId(), $data['jsonapi']['individual']);
+    $expected = UrlHelper::buildQuery(['resourceVersion' => 'id:' . $draft->getRevisionId()]);
+    self::assertStringEndsWith('?' . $expected, $data['jsonapi']['individual']);
   }
 
   /**
@@ -213,6 +246,10 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
 
   /**
    * Tests that a version JSON:API does not understand is dropped.
+   *
+   * @testWith ["rel:bogus"]
+   *           ["id:abc"]
+   *           ["bogus"]
    */
   #[TestWith(['rel:bogus'])]
   #[TestWith(['id:abc'])]
@@ -237,7 +274,8 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
 
     self::assertSame(200, $status, var_export($data, TRUE));
     self::assertSame('published', $data['label']);
-    self::assertStringEndsWith('?resourceVersion=rel:latest-version', $data['jsonapi']['individual']);
+    $expected = UrlHelper::buildQuery(['resourceVersion' => 'rel:latest-version']);
+    self::assertStringEndsWith('?' . $expected, $data['jsonapi']['individual']);
   }
 
   /**
@@ -253,6 +291,22 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
 
     self::assertSame(403, $status, var_export($data, TRUE));
     self::assertArrayNotHasKey('label', $data);
+  }
+
+  /**
+   * Tests that a revision ID with a trailing newline is not accepted.
+   *
+   * A dollar sign in the pattern matches before a final newline, so the value
+   * read from the query string has to be anchored at the very end.
+   */
+  public function testResourceVersionWithTrailingNewlineIsIgnored(): void {
+    [, $draft] = $this->createEntityWithDraft('draft, view all revisions');
+
+    [$status, $data] = $this->translate('/published', 'id:' . $draft->getRevisionId() . "\n");
+
+    self::assertSame(200, $status, var_export($data, TRUE));
+    self::assertSame('published', $data['label']);
+    self::assertStringNotContainsString('resourceVersion', $data['jsonapi']['individual']);
   }
 
 }
