@@ -210,7 +210,7 @@ final class ResourceVersionModerationPathTranslatorTest extends KernelTestBase {
     self::assertSame(200, $status, var_export($data, TRUE));
     self::assertSame('draft', $data['label']);
     self::assertSame((string) $node->id(), (string) ($data['entity']['id'] ?? ''));
-    self::assertStringEndsWith('?resourceVersion=rel:working-copy', $data['jsonapi']['individual']);
+    self::assertStringEndsWith('?resourceVersion=rel%3Aworking-copy', $data['jsonapi']['individual']);
   }
 
   /**

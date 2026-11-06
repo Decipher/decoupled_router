@@ -160,7 +160,7 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
     self::assertSame('draft, view all revisions', $data['label']);
     self::assertSame($published->id(), $data['entity']['id']);
     self::assertStringEndsWith(
-      '/jsonapi/entity_test_rev/entity_test_rev/' . $published->uuid() . '?resourceVersion=rel:working-copy',
+      '/jsonapi/entity_test_rev/entity_test_rev/' . $published->uuid() . '?resourceVersion=rel%3Aworking-copy',
       $data['jsonapi']['individual']
     );
   }
@@ -191,7 +191,7 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
 
     self::assertSame(200, $status, var_export($data, TRUE));
     self::assertSame('draft, view all revisions', $data['label']);
-    self::assertStringEndsWith('?resourceVersion=id:' . $draft->getRevisionId(), $data['jsonapi']['individual']);
+    self::assertStringEndsWith('?resourceVersion=id%3A' . $draft->getRevisionId(), $data['jsonapi']['individual']);
   }
 
   /**
@@ -237,7 +237,7 @@ final class ResourceVersionPathTranslatorTest extends KernelTestBase {
 
     self::assertSame(200, $status, var_export($data, TRUE));
     self::assertSame('published', $data['label']);
-    self::assertStringEndsWith('?resourceVersion=rel:latest-version', $data['jsonapi']['individual']);
+    self::assertStringEndsWith('?resourceVersion=rel%3Alatest-version', $data['jsonapi']['individual']);
   }
 
   /**

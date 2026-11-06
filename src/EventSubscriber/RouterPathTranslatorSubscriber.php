@@ -271,26 +271,30 @@ class RouterPathTranslatorSubscriber implements EventSubscriberInterface {
         ]
       )->toString(TRUE);
       $route_name = sprintf('jsonapi.%s.individual', $type_name);
+      $individual_options = [
+        'absolute' => TRUE,
+        'language' => $entity->language(),
+      ];
+      if ($resource_version !== NULL) {
+        // Passed as a query option so that other outbound path processors,
+        // such as language negotiation, can add their own parameters to the
+        // same query string. JSON:API builds its own version links this way.
+        // @see \Drupal\jsonapi\JsonApiResource\ResourceObject::createFromEntity()
+        $individual_options['query'] = [
+          static::RESOURCE_VERSION_PARAMETER => $resource_version,
+        ];
+      }
       $individual = Url::fromRoute(
         $route_name,
         [
           static::getEntityRouteParameterName($route_name, $entity_type_id) => $entity->uuid(),
         ],
-        [
-          'absolute' => TRUE,
-          'language' => $entity->language(),
-        ]
+        $individual_options
       )->toString(TRUE);
       $response->addCacheableDependency($entry_point_url);
       $response->addCacheableDependency($individual);
-      $individual_url = $individual->getGeneratedUrl();
-      if ($resource_version !== NULL) {
-        // Appended rather than passed as a query option, which would encode
-        // the colon. The value is one this class accepted, so it is safe.
-        $individual_url .= '?' . static::RESOURCE_VERSION_PARAMETER . '=' . $resource_version;
-      }
       $output['jsonapi'] = [
-        'individual' => $individual_url,
+        'individual' => $individual->getGeneratedUrl(),
         'resourceName' => $type_name,
         'pathPrefix' => trim($jsonapi_base_path->getGeneratedUrl(), '/'),
         'basePath' => $jsonapi_base_path->getGeneratedUrl(),
