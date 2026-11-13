@@ -126,6 +126,12 @@ $build_json['require-dev']['rector/rector'] = (int) $drupal_version_major < 11 ?
 // phpstan/phpstan 2.3.4 builds doc types that these Rector releases cannot
 // read, so Rector stops with a system error on every file.
 $build_json['require-dev']['phpstan/phpstan'] = '^2 <2.3.4';
+// consolidation/robo 5.2.1 asks Drush\Application for addCommand(), which
+// the Drush releases these builds resolve do not have, so site-install
+// fatals on Drupal 10 and on the Drupal 11 legacy job. 5.2.2 ships merge
+// conflict markers as well. Robo arrives through drush, so it is pinned here
+// rather than in the extension's own dependencies.
+$build_json['require-dev']['consolidation/robo'] = '^5 <5.2.1';
 file_put_contents($build_composer_json, json_encode($build_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
 PASS('Test dependencies configured.');
 
