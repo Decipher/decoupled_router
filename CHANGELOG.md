@@ -13,6 +13,15 @@ and this project adheres to
 - [#3111456](https://www.drupal.org/project/decoupled_router/issues/3111456):
   The `entity` object includes the `langcode` of the resolved translation,
   and the `jsonapi.individual` URL is built in that language.
+- [#3342618](https://www.drupal.org/project/decoupled_router/issues/3342618):
+  A `resourceVersion` query parameter on `/router/translate-path` is now
+  resolved. The `label` and the `jsonapi.individual` URL describe the
+  revision that `rel:working-copy`, `rel:latest-version` or `id:N` asks
+  for, and the URL carries the parameter. A pending revision needs the
+  same access JSON:API requires. An `id:N` that belongs to another entity
+  is ignored rather than refused: the default revision is described and
+  the parameter is left off the link. Crediting murz, goodmood, kovalski.1298,
+  kiseleva.t and schirumamilla.
 
 ### Fixed
 

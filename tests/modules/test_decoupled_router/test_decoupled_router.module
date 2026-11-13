@@ -7,7 +7,28 @@
 
 declare(strict_types=1);
 
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Access\AccessResultInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Session\AccountInterface;
 use Drupal\user\EntityOwnerInterface;
+
+/**
+ * Implements hook_entity_access().
+ *
+ * Adds a cache tag of its own to the access result, so a test can tell
+ * whether the router recorded the access result it relied on. The result
+ * stays neutral, so it never changes who may see what. Off unless a test
+ * asks for it, because it would otherwise add the tag for every test that
+ * enables this module.
+ */
+function test_decoupled_router_entity_access(EntityInterface $entity, string $operation, AccountInterface $account): AccessResultInterface {
+  if (!\Drupal::state()->get('test_decoupled_router.tag_access', FALSE)) {
+    return AccessResult::neutral();
+  }
+
+  return AccessResult::neutral()->addCacheTags(['test_decoupled_router:' . str_replace(' ', '_', $operation)]);
+}
 
 /**
  * Implements hook_decoupled_router_info_alter().
