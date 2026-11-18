@@ -13,6 +13,7 @@ use Drupal\language\Entity\ConfigurableLanguage;
 use Drupal\node\NodeInterface;
 use Drupal\redirect\Entity\Redirect;
 use Drupal\Tests\BrowserTestBase;
+use Drupal\user\UserInterface;
 use Drupal\Tests\system\Functional\Cache\AssertPageCacheContextsAndTagsTrait;
 
 /**
@@ -37,7 +38,7 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
   /**
    * The user.
    *
-   * @var \Drupal\user\Entity\User
+   * @var \Drupal\user\UserInterface
    */
   protected $user;
 
@@ -81,12 +82,15 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'type' => 'article',
       'name' => 'Article',
     ]);
-    $this->user = $this->drupalCreateUser([
+    $user = $this->drupalCreateUser([
       'access content',
       'create article content',
       'edit any article content',
       'delete any article content',
     ]);
+    // Drupal 10's test stubs type this as 'User|false'.
+    self::assertInstanceOf(UserInterface::class, $user);
+    $this->user = $user;
     $this->createDefaultContent(3);
     $redirect = Redirect::create(['status_code' => '301']);
     $redirect->setSource('/foo');
@@ -526,6 +530,8 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       'administer nodes',
       'bypass node access',
     ]);
+    // Drupal 10's test stubs type this as 'User|false'.
+    self::assertInstanceOf(UserInterface::class, $admin_user);
     $this->drupalLogin($admin_user);
     // Test access via node_id to unpublished content.
     $res = $this->drupalGet(
@@ -594,6 +600,8 @@ class DecoupledRouterFunctionalTest extends BrowserTestBase {
       ->save();
 
     $user = $this->drupalCreateUser(['bypass node access']);
+    // Drupal 10's test stubs type this as 'User|false'.
+    self::assertInstanceOf(UserInterface::class, $user);
     $this->drupalLogin($user);
 
     // Test front page node.

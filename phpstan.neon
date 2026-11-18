@@ -45,5 +45,21 @@ parameters:
       messages:
         - '#^Attribute class PHPUnit\\Framework\\Attributes\\.+ does not exist\.$#'
       reportUnmatched: false
+    -
+      # The requirements severity enum arrived in Drupal 11.2. The call that
+      # reads it is guarded by DeprecationHelper::backwardsCompatibleCall(),
+      # so a Drupal 10 site never reaches it and the class it names is absent
+      # from a Drupal 10 build.
+      messages:
+        - '#^Access to constant Error on an unknown class Drupal\\Core\\Extension\\Requirement\\RequirementSeverity\.$#'
+        - '#^Anonymous function has invalid return type Drupal\\Core\\Extension\\Requirement\\RequirementSeverity\.$#'
+      reportUnmatched: false
+    -
+      # Drupal 10's test stubs type drupalCreateUser() as 'User|false' and
+      # Drupal 11's as 'UserInterface', so the instance check Drupal 10 needs
+      # is already narrowed on Drupal 11.
+      messages:
+        - '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with .+ and Drupal\\user\\UserInterface will always evaluate to true\.$#'
+      reportUnmatched: false
 
   reportUnmatchedIgnoredErrors: false
