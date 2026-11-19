@@ -234,7 +234,10 @@ jobs:
         run: php -d pcov.directory=.. vendor/bin/phpunit
         continue-on-error: ${{ vars.CI_TEST_IGNORE_FAILURE == '1' }}
         env:
-          BROWSERTEST_OUTPUT_DIRECTORY: ../.logs/browser_output
+          # Absolute, because Drupal 10's test bootstrap changes directory
+          # into web/. A path relative to the build directory then lands in
+          # build/.logs, which the upload step below never reads.
+          BROWSERTEST_OUTPUT_DIRECTORY: ${{ github.workspace }}/.logs/browser_output
           SIMPLETEST_DB: sqlite://tmp/db.sqlite
           WEBDRIVER_BACKEND: selenium
 
