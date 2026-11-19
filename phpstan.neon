@@ -5,7 +5,8 @@
 # from vendor/mglaman/phpstan-drupal/extension.neon and vendor/mglaman/phpstan-drupal/rules.neon
 # @see https://github.com/mglaman/phpstan-drupal
 #
-# Paths are passed as CLI arguments.
+# Paths are declared in the `paths` key below, not passed as CLI
+# arguments.
 
 includes:
   - phpstan-baseline.neon
@@ -14,9 +15,14 @@ parameters:
 
   level: 7
 
+  # PHPStan caches reflection data that embeds absolute paths into its own
+  # PHAR. The default cache directory is shared by every project on the machine,
+  # so entries left by a build that no longer exists break the next run. Keeping
+  # the cache beside this config scopes it to a single codebase.
+  tmpDir: .phpstan
+
   paths:
     - web/modules/custom
-    - web/themes/custom
 
   excludePaths:
     - vendor/*
@@ -26,13 +32,38 @@ parameters:
 
   ignoreErrors:
     -
-      # Hook implementations do not provide docblocks for parameters, so there
-      # is no way to provide this information.
+      # Hook implementation docblocks carry only 'Implements hook_NAME().', so
+      # they declare neither iterable value types nor return types.
       messages:
         - '#.* no value type specified in iterable type array#'
         - '#.* has no return type specified#'
-      paths:
-        - '*'
+      reportUnmatched: false
+    -
+      # PHP resolves attribute classes lazily and PHPUnit 9.6 reads doc-comment
+      # metadata, so these are inert rather than broken on a Drupal 10 build.
+      # Rector writes them from the Drupal 11 set. Named one by one, so a
+      # misspelled or unknown attribute is still reported on Drupal 11, where
+      # PHPUnit 11 would skip it in silence.
+      messages:
+        - '#^Attribute class PHPUnit\\Framework\\Attributes\\Group does not exist\.$#'
+        - '#^Attribute class PHPUnit\\Framework\\Attributes\\RunTestsInSeparateProcesses does not exist\.$#'
+        - '#^Attribute class PHPUnit\\Framework\\Attributes\\TestWith does not exist\.$#'
+      reportUnmatched: false
+    -
+      # The requirements severity enum arrived in Drupal 11.2. The call that
+      # reads it is guarded by DeprecationHelper::backwardsCompatibleCall(),
+      # so a Drupal 10 site never reaches it and the class it names is absent
+      # from a Drupal 10 build.
+      messages:
+        - '#^Access to constant Error on an unknown class Drupal\\Core\\Extension\\Requirement\\RequirementSeverity\.$#'
+        - '#^Anonymous function has invalid return type Drupal\\Core\\Extension\\Requirement\\RequirementSeverity\.$#'
+      reportUnmatched: false
+    -
+      # Drupal 10's test stubs type drupalCreateUser() as 'User|false' and
+      # Drupal 11's as 'UserInterface', so the instance check Drupal 10 needs
+      # is already narrowed on Drupal 11.
+      messages:
+        - '#^Call to static method PHPUnit\\Framework\\Assert\:\:assertInstanceOf\(\) with .+ and Drupal\\user\\UserInterface will always evaluate to true\.$#'
       reportUnmatched: false
 
   reportUnmatchedIgnoredErrors: false

@@ -24,7 +24,7 @@ function decoupled_router_requirements($phase): array {
       if (version_compare($version, '1.12', '<')) {
         $requirements['decoupled_router_redirect'] = [
           'title' => t('Decoupled router - Redirect compatibility'),
-          'severity' => DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.2.0', fn(): RequirementSeverity => RequirementSeverity::Error, fn() => REQUIREMENT_ERROR),
+          'severity' => DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.2.0', fn(): RequirementSeverity => RequirementSeverity::Error, fn(): int => REQUIREMENT_ERROR),
           'description' => t('The Redirect module must be version 1.12 or greater.'),
         ];
       }
