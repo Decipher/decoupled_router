@@ -41,9 +41,13 @@ parameters:
     -
       # PHP resolves attribute classes lazily and PHPUnit 9.6 reads doc-comment
       # metadata, so these are inert rather than broken on a Drupal 10 build.
-      # Rector writes them from the Drupal 11 set.
+      # Rector writes them from the Drupal 11 set. Named one by one, so a
+      # misspelled or unknown attribute is still reported on Drupal 11, where
+      # PHPUnit 11 would skip it in silence.
       messages:
-        - '#^Attribute class PHPUnit\\Framework\\Attributes\\.+ does not exist\.$#'
+        - '#^Attribute class PHPUnit\\Framework\\Attributes\\Group does not exist\.$#'
+        - '#^Attribute class PHPUnit\\Framework\\Attributes\\RunTestsInSeparateProcesses does not exist\.$#'
+        - '#^Attribute class PHPUnit\\Framework\\Attributes\\TestWith does not exist\.$#'
       reportUnmatched: false
     -
       # The requirements severity enum arrived in Drupal 11.2. The call that
