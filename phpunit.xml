@@ -55,10 +55,12 @@
         <env name="MINK_DRIVER_ARGS" value=""/>
         <!-- Example for changing the driver args to webdriver tests MINK_DRIVER_ARGS_WEBDRIVER value: '["chrome", { "goog:chromeOptions": { "w3c": false } }, "http://localhost:4444/wd/hub"]' For using the Firefox browser, replace "chrome" with "firefox" -->
         <!-- The endpoint below is the default. Both WebDriver backends bind the
-          per-project port resolved by 'eddy-browser-start' (WEBDRIVER_PORT), so
-          the FunctionalJavascript base class replaces the port in this value at
-          run time. Tests that do not extend that base class can export their own
-          MINK_DRIVER_ARGS_WEBDRIVER, which takes precedence over this entry.
+          per-project port resolved by 'eddy-browser-start' (WEBDRIVER_PORT),
+          but nothing rewrites the port in this value at run time. This
+          extension has no FunctionalJavascript base class that does so, so a
+          test on a non-default port needs a base class that rewrites the port,
+          or its own MINK_DRIVER_ARGS_WEBDRIVER, which takes precedence over
+          this entry.
         -->
         <env name="MINK_DRIVER_ARGS_WEBDRIVER" value='["chrome", {"browserName": "chrome", "goog:chromeOptions": {"w3c": true, "args": ["--no-sandbox", "--disable-gpu", "--window-size=1280,1024"]}}, "http://localhost:4444"]'/>
     </php>
