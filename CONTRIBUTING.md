@@ -5,7 +5,9 @@ This guide is for developers working on this extension. Follow it to build a loc
 ## Local development
 
 1. Install the following tools:
-   - PHP with SQLite support
+   - PHP 8.3 or newer, with SQLite support. The `drevops/eddy-tooling`
+     package needs 8.3. The extension itself supports the older versions
+     that `composer.json` names
    - Composer
    - Node.js with npm, which the build uses
    - [Ahoy](https://github.com/ahoy-cli/ahoy)
