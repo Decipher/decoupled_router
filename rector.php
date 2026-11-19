@@ -102,9 +102,12 @@ return RectorConfig::configure()
       '*decoupled_router.install',
     ],
   ])
-  // PHP version upgrade sets - modernizes syntax to PHP 8.3.
-  // Includes all rules from PHP 5.3 through 8.3.
-  ->withPhpSets(php83: TRUE)
+  // PHP version upgrade sets. Held at the minimum composer.json advertises,
+  // not at the newest the matrix runs. Rector rewrites src/, so a higher set
+  // lets `make lint-fix` emit syntax that cannot parse on a PHP version this
+  // module still claims to support, and no CI leg runs below 8.3 to catch it.
+  // Raise this with the composer constraint, in the same change.
+  ->withPhpSets(php81: TRUE)
   // Code quality improvement sets.
   ->withPreparedSets(
     deadCode: TRUE,
