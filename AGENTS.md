@@ -21,7 +21,6 @@ Run each tool through its `make` wrapper, never the binary directly:
 - **ESLint / Stylelint**: `make lint` / `make lint-fix` - never `npx eslint` or `npx stylelint`.
 - **CSpell**: `make lint` - never `npx cspell`.
 - **PHPUnit**: `make test` / `make test-unit` / `make test-kernel` / `make test-functional` - never `vendor/bin/phpunit`.
-- **Jest**: `make test-js` - never `npx jest`.
 - **Drush**: `make drush <command>` - never `build/vendor/bin/drush` directly.
 
 Run each tool through its `ahoy` wrapper, never the binary directly:
@@ -33,7 +32,6 @@ Run each tool through its `ahoy` wrapper, never the binary directly:
 - **ESLint / Stylelint**: `ahoy lint` / `ahoy lint-fix` - never `npx eslint` or `npx stylelint`.
 - **CSpell**: `ahoy lint` - never `npx cspell`.
 - **PHPUnit**: `ahoy test` / `ahoy test-unit` / `ahoy test-kernel` / `ahoy test-functional` - never `vendor/bin/phpunit`.
-- **Jest**: `ahoy test-js` - never `npx jest`.
 - **Drush**: `ahoy drush <command>` - never `build/vendor/bin/drush` directly.
 
 ### Build and Environment Management
