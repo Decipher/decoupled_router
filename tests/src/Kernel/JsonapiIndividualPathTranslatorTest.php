@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
+use Drupal\Component\Utility\DeprecationHelper;
+use Drupal\user\Entity\Role;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\Attributes\TestWith;
@@ -88,10 +90,10 @@ final class JsonapiIndividualPathTranslatorTest extends KernelTestBase {
     $this->installEntitySchema('entity_test');
     $this->installEntitySchema('path_alias');
 
-    user_role_grant_permissions(
+    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['access content', 'view test entity'])?->save(), fn() => user_role_grant_permissions(
       RoleInterface::ANONYMOUS_ID,
       ['access content', 'view test entity']
-    );
+    ));
   }
 
   /**

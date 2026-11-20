@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
+use Drupal\Component\Utility\DeprecationHelper;
+use Drupal\user\Entity\Role;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Component\Serialization\Json;
@@ -72,10 +74,10 @@ final class RedirectPathTranslatorSubscriberTest extends KernelTestBase {
     $this->installEntitySchema('path_alias');
     $this->installEntitySchema('redirect');
 
-    user_role_grant_permissions(
+    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['access content', 'view test entity'])?->save(), fn() => user_role_grant_permissions(
       RoleInterface::ANONYMOUS_ID,
       ['access content', 'view test entity']
-    );
+    ));
   }
 
   /**
@@ -287,7 +289,7 @@ final class RedirectPathTranslatorSubscriberTest extends KernelTestBase {
    */
   public function testRedirectToForbiddenEntityIsNotIntercepted(): void {
     $this->createTestEntity('/entity-test');
-    user_role_revoke_permissions(RoleInterface::ANONYMOUS_ID, ['view test entity']);
+    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->revokePermissions(['view test entity'])?->save(), fn() => user_role_revoke_permissions(RoleInterface::ANONYMOUS_ID, ['view test entity']));
 
     $redirect = Redirect::create(['status_code' => 301]);
     $redirect->setSource('/old-path');

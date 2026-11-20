@@ -7,17 +7,15 @@
 
 declare(strict_types=1);
 
-use Drupal\user\EntityOwnerInterface;
+use Drupal\Core\Hook\Attribute\LegacyHook;
+use Drupal\test_decoupled_router\Hook\TestDecoupledRouterHooks;
 
 /**
  * Implements hook_decoupled_router_info_alter().
  */
+#[LegacyHook]
 function test_decoupled_router_decoupled_router_info_alter(array &$output, array $context): void {
-  $entity = $context['entity'];
-  if (!is_subclass_of($entity, EntityOwnerInterface::class)) {
-    return;
-  }
-  $output['entity']['owner'] = $entity->getOwner()->uuid();
+  \Drupal::service(TestDecoupledRouterHooks::class)->decoupledRouterInfoAlter($output, $context);
 }
 
 /**

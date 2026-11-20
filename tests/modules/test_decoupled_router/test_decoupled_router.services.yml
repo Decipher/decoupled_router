@@ -4,3 +4,7 @@ services:
     arguments: ['@entity_type.manager']
     tags:
       - { name: paramconverter, priority: 20 }
+
+  Drupal\test_decoupled_router\Hook\TestDecoupledRouterHooks:
+    class: Drupal\test_decoupled_router\Hook\TestDecoupledRouterHooks
+    autowire: true

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
+use Drupal\Component\Utility\DeprecationHelper;
+use Drupal\user\Entity\Role;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
@@ -109,10 +111,10 @@ final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
     // Rebuild so the negotiator picks up the new language and config.
     $this->container->get('kernel')->rebuildContainer();
 
-    user_role_grant_permissions(
+    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['access content', 'view test entity'])?->save(), fn() => user_role_grant_permissions(
       RoleInterface::ANONYMOUS_ID,
       ['access content', 'view test entity']
-    );
+    ));
   }
 
   /**
@@ -434,10 +436,10 @@ final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
   public function testPrefixedAliasOfTranslatedFrontPageIsHomePath(): void {
     // Viewing a translation that is not the default one needs its own
     // permission, see EntityTestAccessControlHandler.
-    user_role_grant_permissions(
+    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['view test entity translations'])?->save(), fn() => user_role_grant_permissions(
       RoleInterface::ANONYMOUS_ID,
       ['view test entity translations']
-    );
+    ));
 
     /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */
     $entity = $this->container->get('entity_type.manager')
@@ -629,10 +631,10 @@ final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
   public function testNonStrippingPluginLanguageSelectsTranslation(): void {
     // Viewing a translation that is not the default one needs its own
     // permission, see EntityTestAccessControlHandler.
-    user_role_grant_permissions(
+    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['view test entity translations'])?->save(), fn() => user_role_grant_permissions(
       RoleInterface::ANONYMOUS_ID,
       ['view test entity translations']
-    );
+    ));
 
     $negotiator = $this->createMock(LanguageNegotiatorInterface::class);
     $negotiator->method('getNegotiationMethodInstance')
@@ -673,10 +675,10 @@ final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
   public function testDomainNegotiationResolvesFromInboundHost(): void {
     // Viewing a translation that is not the default one needs its own
     // permission, see EntityTestAccessControlHandler.
-    user_role_grant_permissions(
+    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['view test entity translations'])?->save(), fn() => user_role_grant_permissions(
       RoleInterface::ANONYMOUS_ID,
       ['view test entity translations']
-    );
+    ));
     $this->configureDomainNegotiation();
 
     /** @var \Drupal\Core\Entity\ContentEntityInterface $entity */

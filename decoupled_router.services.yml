@@ -10,3 +10,7 @@ services:
   decoupled_router.cache_invalidation:
     class: Drupal\decoupled_router\CacheInvalidator
     arguments: ['@cache_tags.invalidator', '@entity_type.manager']
+
+  Drupal\decoupled_router\Hook\DecoupledRouterHooks:
+    class: Drupal\decoupled_router\Hook\DecoupledRouterHooks
+    autowire: true
