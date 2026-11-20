@@ -1,0 +1,6 @@
+services:
+  paramconverter.test_decoupled_router.malformed_entity:
+    class: Drupal\test_decoupled_router\MalformedEntityParamConverter
+    arguments: ['@entity_type.manager']
+    tags:
+      - { name: paramconverter, priority: 20 }

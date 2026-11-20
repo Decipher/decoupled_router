@@ -9,6 +9,7 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Url;
 use Drupal\Tests\BrowserTestBase;
+use Drupal\user\UserInterface;
 
 /**
  * Test class.
@@ -29,7 +30,7 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
   /**
    * The user.
    *
-   * @var \Drupal\user\Entity\User
+   * @var \Drupal\user\UserInterface
    */
   protected $user;
 
@@ -55,10 +56,13 @@ class DecoupledRouterInfoAlterTest extends BrowserTestBase {
       'type' => 'article',
       'name' => 'Article',
     ]);
-    $this->user = $this->drupalCreateUser([
+    $user = $this->drupalCreateUser([
       'access content',
       'create article content',
     ]);
+    // Drupal 10's test stubs type this as 'User|false'.
+    self::assertInstanceOf(UserInterface::class, $user);
+    $this->user = $user;
     $this->container->get('router.builder')->rebuild();
   }
 

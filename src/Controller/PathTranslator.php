@@ -53,7 +53,7 @@ class PathTranslator extends ControllerBase {
       $this->httpKernel,
       $request,
       HttpKernelInterface::MAIN_REQUEST,
-      sprintf('/%s', ltrim($path, '/'))
+      sprintf('/%s', ltrim((string) $path, '/'))
     );
     // Event subscribers are in charge of setting the appropriate response,
     // including cacheability metadata.

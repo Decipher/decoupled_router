@@ -58,6 +58,13 @@ variables:
 
 cspell:
   allow_failure: false
+
+# Drupal 10's test bootstrap changes directory into web/. PHPUnit 9 then
+# reads the configuration file again from there, so a relative path fails
+# before a single test runs.
+phpunit (previous major):
+  variables:
+    _PHPUNIT_EXTRA: '--no-coverage --configuration=$CI_PROJECT_DIR/phpunit.gitlab-ci.xml'
 eslint:
   allow_failure: false
 phpcs:
