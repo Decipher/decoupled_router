@@ -10,7 +10,12 @@ services:
   decoupled_router.cache_invalidation:
     class: Drupal\decoupled_router\CacheInvalidator
     arguments: ['@cache_tags.invalidator', '@entity_type.manager']
-
+  decoupled_router.redirect_compatibility:
+    class: Drupal\decoupled_router\RedirectCompatibility
+    arguments: ['@module_handler', '@extension.list.module', '@string_translation']
   Drupal\decoupled_router\Hook\DecoupledRouterHooks:
     class: Drupal\decoupled_router\Hook\DecoupledRouterHooks
-    autowire: true
+    arguments: ['@entity_type.manager', '@decoupled_router.cache_invalidation']
+  Drupal\decoupled_router\Hook\RequirementsHooks:
+    class: Drupal\decoupled_router\Hook\RequirementsHooks
+    arguments: ['@decoupled_router.redirect_compatibility']

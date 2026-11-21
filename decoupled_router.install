@@ -9,28 +9,39 @@ declare(strict_types=1);
 
 use Drupal\Component\Utility\DeprecationHelper;
 use Drupal\Core\Extension\Requirement\RequirementSeverity;
+use Drupal\Core\Hook\Attribute\LegacyRequirementsHook;
 
 /**
  * Implements hook_requirements().
+ *
+ * Drupal 11.3 and later run
+ * \Drupal\decoupled_router\Hook\RequirementsHooks instead, because of the
+ * attribute below. This implementation serves Drupal 10 and 11.2, which have
+ * no hook_runtime_requirements() to call.
  */
+#[LegacyRequirementsHook]
 function decoupled_router_requirements($phase): array {
-  $requirements = [];
-  if (\Drupal::moduleHandler()->moduleExists('redirect')) {
-    $version = \Drupal::service('extension.list.module')->get('redirect')->info['version'];
-    if ($version !== NULL) {
-      if (str_starts_with($version, '8.x-')) {
-        $version = substr($version, 4);
-      }
-      if (version_compare($version, '1.12', '<')) {
-        $requirements['decoupled_router_redirect'] = [
-          'title' => t('Decoupled router - Redirect compatibility'),
-          'severity' => DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.2.0', fn(): RequirementSeverity => RequirementSeverity::Error, fn(): int => REQUIREMENT_ERROR),
-          'description' => t('The Redirect module must be version 1.12 or greater.'),
-        ];
-      }
-    }
+  // Drupal runs this hook for the install phase before the module is
+  // installed, so neither its services nor its classes can be reached yet.
+  // Drupal 11.3 and later have no install phase here at all, because
+  // hook_runtime_requirements() is runtime only, so returning nothing keeps
+  // every supported version behaving the same way.
+  if ($phase !== 'runtime') {
+    return [];
   }
-  return $requirements;
+  $requirement = \Drupal::service('decoupled_router.redirect_compatibility')
+    ->getRequirement();
+  if ($requirement === NULL) {
+    return [];
+  }
+  $requirement['severity'] = DeprecationHelper::backwardsCompatibleCall(
+    \Drupal::VERSION,
+    '11.2.0',
+    fn(): RequirementSeverity => RequirementSeverity::Error,
+    fn(): int => REQUIREMENT_ERROR,
+  );
+
+  return ['decoupled_router_redirect' => $requirement];
 }
 
 /**

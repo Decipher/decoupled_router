@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
-use Drupal\Component\Utility\DeprecationHelper;
-use Drupal\user\Entity\Role;
-use PHPUnit\Framework\Attributes\Group;
-use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Core\Url;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Tests\decoupled_router\Traits\RolePermissionsTrait;
 use Drupal\user\RoleInterface;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -22,6 +21,8 @@ use Symfony\Component\HttpFoundation\Request;
 #[Group('decoupled_router')]
 #[RunTestsInSeparateProcesses]
 final class PathTranslatorControllerTest extends KernelTestBase {
+
+  use RolePermissionsTrait;
 
   /**
    * {@inheritdoc}
@@ -47,7 +48,7 @@ final class PathTranslatorControllerTest extends KernelTestBase {
       ->create(['uid' => 0, 'status' => 0, 'name' => ''])
       ->save();
     $this->installEntitySchema('path_alias');
-    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['access content'])?->save(), fn() => user_role_grant_permissions(RoleInterface::ANONYMOUS_ID, ['access content']));
+    $this->grantPermissionsToRole(RoleInterface::ANONYMOUS_ID, ['access content']);
   }
 
   /**

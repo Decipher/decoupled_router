@@ -50,6 +50,26 @@ parameters:
         - '#^Attribute class PHPUnit\\Framework\\Attributes\\TestWith does not exist\.$#'
       reportUnmatched: false
     -
+      # The attribute hook API arrived in Drupal 11.1 and the requirements
+      # attribute in 11.3. Both are read by reflection, which a Drupal 10 site
+      # never performs on them, so the module still works there: Drupal 10
+      # calls the procedural hook, which is what the attribute exists to turn
+      # off from 11.3 onwards. Named one by one, so an unknown attribute is
+      # still reported.
+      messages:
+        - '#^Attribute class Drupal\\Core\\Hook\\Attribute\\Hook does not exist\.$#'
+        - '#^Attribute class Drupal\\Core\\Hook\\Attribute\\LegacyHook does not exist\.$#'
+        - '#^Attribute class Drupal\\Core\\Hook\\Attribute\\LegacyRequirementsHook does not exist\.$#'
+      reportUnmatched: false
+    -
+      # Drupal 12 removes REQUIREMENT_ERROR along with the procedural
+      # requirements API it belongs to. The closure that names it is only
+      # evaluated on core below 11.2, which is the mirror of the entry below,
+      # so a Drupal 12 build never reaches it and never defines it.
+      messages:
+        - '#^Constant REQUIREMENT_ERROR not found\.$#'
+      reportUnmatched: false
+    -
       # The requirements severity enum arrived in Drupal 11.2. The call that
       # reads it is guarded by DeprecationHelper::backwardsCompatibleCall(),
       # so a Drupal 10 site never reaches it and the class it names is absent

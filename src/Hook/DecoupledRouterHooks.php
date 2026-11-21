@@ -1,29 +1,38 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Drupal\decoupled_router\Hook;
 
-use Drupal\path_alias\PathAliasInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Hook\Attribute\Hook;
+use Drupal\decoupled_router\CacheInvalidator;
+use Drupal\path_alias\PathAliasInterface;
 
 /**
  * Hook implementations for decoupled_router.
  */
 class DecoupledRouterHooks {
 
+  public function __construct(
+    protected EntityTypeManagerInterface $entityTypeManager,
+    protected CacheInvalidator $cacheInvalidator,
+  ) {}
+
   /**
    * Implements hook_ENTITY_TYPE_presave().
    *
    * Stashes the currently-stored version of an existing path alias before
-   * save overwrites it. decoupled_router_path_alias_update() needs the
-   * unchanged version to detect a repointed alias's old source path; loading
-   * it again after save would just return the new values.
+   * save overwrites it. The update hook needs the unchanged version to detect
+   * a repointed alias's old source path; loading it again after save would
+   * just return the new values.
    */
   #[Hook('path_alias_presave')]
   public function pathAliasPresave(PathAliasInterface $path_alias): void {
     if ($path_alias->isNew()) {
       return;
     }
-    $storage = \Drupal::entityTypeManager()->getStorage('path_alias');
+    $storage = $this->entityTypeManager->getStorage('path_alias');
     $unchanged = $storage->loadUnchanged($path_alias->id());
     if ($unchanged instanceof PathAliasInterface) {
       _decoupled_router_stash_path_alias($path_alias->id(), $unchanged);
@@ -39,7 +48,7 @@ class DecoupledRouterHooks {
    */
   #[Hook('path_alias_insert')]
   public function pathAliasInsert(PathAliasInterface $path_alias): void {
-    \Drupal::service('decoupled_router.cache_invalidation')->invalidateByPath([
+    $this->cacheInvalidator->invalidateByPath([
       'source' => $path_alias->getPath(),
     ]);
   }
@@ -56,13 +65,12 @@ class DecoupledRouterHooks {
    */
   #[Hook('path_alias_update')]
   public function pathAliasUpdate(PathAliasInterface $path_alias): void {
-    $cache_invalidator = \Drupal::service('decoupled_router.cache_invalidation');
-    $cache_invalidator->invalidateByPath([
+    $this->cacheInvalidator->invalidateByPath([
       'source' => $path_alias->getPath(),
     ]);
     $original = _decoupled_router_stash_path_alias($path_alias->id());
     if ($original instanceof PathAliasInterface && $original->getPath() !== $path_alias->getPath()) {
-      $cache_invalidator->invalidateByPath([
+      $this->cacheInvalidator->invalidateByPath([
         'source' => $original->getPath(),
       ]);
     }
@@ -75,7 +83,7 @@ class DecoupledRouterHooks {
    */
   #[Hook('path_alias_delete')]
   public function pathAliasDelete(PathAliasInterface $path_alias): void {
-    \Drupal::service('decoupled_router.cache_invalidation')->invalidateByPath([
+    $this->cacheInvalidator->invalidateByPath([
       'source' => $path_alias->getPath(),
     ]);
   }

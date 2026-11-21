@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
-use Drupal\Component\Utility\DeprecationHelper;
-use Drupal\user\Entity\Role;
-use PHPUnit\Framework\Attributes\Group;
-use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use PHPUnit\Framework\Attributes\TestWith;
 use Drupal\Component\Serialization\Json;
 use Drupal\Component\Uuid\Uuid;
 use Drupal\Core\Cache\NullBackend;
@@ -19,7 +14,11 @@ use Drupal\Core\ParamConverter\ParamConverterInterface;
 use Drupal\Core\Url;
 use Drupal\jsonapi\Routing\Routes;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Tests\decoupled_router\Traits\RolePermissionsTrait;
 use Drupal\user\RoleInterface;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
+use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Route;
 
@@ -32,6 +31,8 @@ use Symfony\Component\Routing\Route;
 #[Group('decoupled_router')]
 #[RunTestsInSeparateProcesses]
 final class GenericEntityUuidParamConverterRouterPathTranslatorTest extends KernelTestBase implements ParamConverterInterface {
+
+  use RolePermissionsTrait;
 
   use DynamicEntityTypeParamConverterTrait;
 
@@ -102,10 +103,10 @@ final class GenericEntityUuidParamConverterRouterPathTranslatorTest extends Kern
   #[TestWith(['/entity_test/1'])]
   #[TestWith(['/entity-test'])]
   public function testTranslationFromUuid(string $path): void {
-    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['access content', 'view test entity'])?->save(), fn() => user_role_grant_permissions(
+    $this->grantPermissionsToRole(
       RoleInterface::ANONYMOUS_ID,
       ['access content', 'view test entity']
-    ));
+    );
 
     $entity = $this->container->get('entity_type.manager')->getStorage('entity_test')
       ->create([
@@ -168,10 +169,10 @@ final class GenericEntityUuidParamConverterRouterPathTranslatorTest extends Kern
    * first (uncached) call and the cached one.
    */
   public function testJsonapiInfoIsConsistentAcrossCachedCalls(): void {
-    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['access content', 'view test entity'])?->save(), fn() => user_role_grant_permissions(
+    $this->grantPermissionsToRole(
       RoleInterface::ANONYMOUS_ID,
       ['access content', 'view test entity']
-    ));
+    );
 
     $first = $this->translateAndGetJsonapiInfo('first');
     $second = $this->translateAndGetJsonapiInfo('second');

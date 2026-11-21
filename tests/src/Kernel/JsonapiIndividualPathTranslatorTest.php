@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
-use Drupal\Component\Utility\DeprecationHelper;
-use Drupal\user\Entity\Role;
-use PHPUnit\Framework\Attributes\Group;
-use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use PHPUnit\Framework\Attributes\TestWith;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Cache\NullBackend;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
@@ -16,7 +11,11 @@ use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Url;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Tests\decoupled_router\Traits\RolePermissionsTrait;
 use Drupal\user\RoleInterface;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
+use PHPUnit\Framework\Attributes\TestWith;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -32,6 +31,8 @@ use Symfony\Component\HttpFoundation\Request;
 #[Group('decoupled_router')]
 #[RunTestsInSeparateProcesses]
 final class JsonapiIndividualPathTranslatorTest extends KernelTestBase {
+
+  use RolePermissionsTrait;
 
   /**
    * The UUID given to the test entity.
@@ -90,10 +91,10 @@ final class JsonapiIndividualPathTranslatorTest extends KernelTestBase {
     $this->installEntitySchema('entity_test');
     $this->installEntitySchema('path_alias');
 
-    DeprecationHelper::backwardsCompatibleCall(\Drupal::VERSION, '11.5.0', fn() => Role::loadOverrideFree(RoleInterface::ANONYMOUS_ID)?->grantPermissions(['access content', 'view test entity'])?->save(), fn() => user_role_grant_permissions(
+    $this->grantPermissionsToRole(
       RoleInterface::ANONYMOUS_ID,
       ['access content', 'view test entity']
-    ));
+    );
   }
 
   /**
