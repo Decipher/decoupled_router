@@ -12,15 +12,15 @@
     <arg name="colors"/>
     <arg value="sp"/>
     <arg name="parallel" value="75"/>
-    <!-- Lint code against platform version specified in composer.json key "config.platform.php". -->
-    <config name="testVersion" value="8.2"/>
+    <!-- The PHP version the tooling runs. This ruleset does not load
+      PHPCompatibility, the only standard that reads testVersion, so the
+      value enables no version checks. It is not the extension's own
+      minimum, which composer.json states. -->
+    <config name="testVersion" value="8.3"/>
 
     <!-- Exclude front-end assets. -->
     <exclude-pattern>.*\/node_modules\/.*</exclude-pattern>
     <exclude-pattern>*\.min\.*</exclude-pattern>
-
-    <!-- Exclude scaffold-provided dev tooling, not project code. -->
-    <exclude-pattern>.*\/\.devtools\/.*</exclude-pattern>
 
     <!-- Force no empty lines after function opening brace. -->
     <rule ref="Squiz.WhiteSpace.FunctionOpeningBraceSpace">

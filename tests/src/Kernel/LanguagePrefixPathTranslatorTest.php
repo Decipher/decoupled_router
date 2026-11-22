@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
-use PHPUnit\Framework\Attributes\Group;
-use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Cache\NullBackend;
@@ -24,7 +22,10 @@ use Drupal\language\LanguageNegotiationMethodInterface;
 use Drupal\language\LanguageNegotiatorInterface;
 use Drupal\language\Plugin\LanguageNegotiation\LanguageNegotiationUrl;
 use Drupal\redirect\Entity\Redirect;
+use Drupal\Tests\decoupled_router\Traits\RolePermissionsTrait;
 use Drupal\user\RoleInterface;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 
@@ -41,6 +42,8 @@ use Symfony\Component\HttpKernel\HttpKernelInterface;
 #[Group('decoupled_router')]
 #[RunTestsInSeparateProcesses]
 final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
+
+  use RolePermissionsTrait;
 
   /**
    * {@inheritdoc}
@@ -109,7 +112,7 @@ final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
     // Rebuild so the negotiator picks up the new language and config.
     $this->container->get('kernel')->rebuildContainer();
 
-    user_role_grant_permissions(
+    $this->grantPermissionsToRole(
       RoleInterface::ANONYMOUS_ID,
       ['access content', 'view test entity']
     );
@@ -434,7 +437,7 @@ final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
   public function testPrefixedAliasOfTranslatedFrontPageIsHomePath(): void {
     // Viewing a translation that is not the default one needs its own
     // permission, see EntityTestAccessControlHandler.
-    user_role_grant_permissions(
+    $this->grantPermissionsToRole(
       RoleInterface::ANONYMOUS_ID,
       ['view test entity translations']
     );
@@ -629,7 +632,7 @@ final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
   public function testNonStrippingPluginLanguageSelectsTranslation(): void {
     // Viewing a translation that is not the default one needs its own
     // permission, see EntityTestAccessControlHandler.
-    user_role_grant_permissions(
+    $this->grantPermissionsToRole(
       RoleInterface::ANONYMOUS_ID,
       ['view test entity translations']
     );
@@ -673,7 +676,7 @@ final class LanguagePrefixPathTranslatorTest extends KernelTestBase {
   public function testDomainNegotiationResolvesFromInboundHost(): void {
     // Viewing a translation that is not the default one needs its own
     // permission, see EntityTestAccessControlHandler.
-    user_role_grant_permissions(
+    $this->grantPermissionsToRole(
       RoleInterface::ANONYMOUS_ID,
       ['view test entity translations']
     );

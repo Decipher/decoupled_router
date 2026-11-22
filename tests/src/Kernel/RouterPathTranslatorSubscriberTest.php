@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
-use PHPUnit\Framework\Attributes\Group;
-use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Cache\CacheableMetadata;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
@@ -15,7 +13,10 @@ use Drupal\Core\Url;
 use Drupal\decoupled_router\EventSubscriber\RouterPathTranslatorSubscriber;
 use Drupal\decoupled_router\PathTranslatorEvent;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\Tests\decoupled_router\Traits\RolePermissionsTrait;
 use Drupal\user\RoleInterface;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
@@ -30,6 +31,8 @@ use Symfony\Component\Routing\Route;
 #[Group('decoupled_router')]
 #[RunTestsInSeparateProcesses]
 final class RouterPathTranslatorSubscriberTest extends KernelTestBase implements ParamConverterInterface {
+
+  use RolePermissionsTrait;
 
   /**
    * {@inheritdoc}
@@ -81,7 +84,7 @@ final class RouterPathTranslatorSubscriberTest extends KernelTestBase implements
     $this->installEntitySchema('entity_test');
     $this->installEntitySchema('path_alias');
 
-    user_role_grant_permissions(
+    $this->grantPermissionsToRole(
       RoleInterface::ANONYMOUS_ID,
       ['access content', 'view test entity']
     );

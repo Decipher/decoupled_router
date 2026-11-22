@@ -51,6 +51,11 @@ variables:
   OPT_IN_TEST_PREVIOUS_MINOR: 1
   OPT_IN_TEST_NEXT_MINOR: 1
   OPT_IN_TEST_NEXT_MAJOR: 1
+  # Run the next major jobs on every pipeline rather than on a click. They
+  # are manual by default, so nothing checked Drupal 12 until this branch
+  # declared it, and twelve findings had built up unseen by then. The module
+  # claims Drupal 12 support, so a regression against it should fail here.
+  _AUTORUN_NEXT_MAJOR: all
   CORE_PREVIOUS_PHP_MIN: 8.1
   _PHPUNIT_EXTRA: '--no-coverage --configuration=phpunit.gitlab-ci.xml'
   # gitlab_templates 1.17.0 made run-tests.sh the default. Keep the phpunit binary.
@@ -58,6 +63,13 @@ variables:
 
 cspell:
   allow_failure: false
+
+# Drupal 10's test bootstrap changes directory into web/. PHPUnit 9 then
+# reads the configuration file again from there, so a relative path fails
+# before a single test runs.
+phpunit (previous major):
+  variables:
+    _PHPUNIT_EXTRA: '--no-coverage --configuration=$CI_PROJECT_DIR/phpunit.gitlab-ci.xml'
 eslint:
   allow_failure: false
 phpcs:

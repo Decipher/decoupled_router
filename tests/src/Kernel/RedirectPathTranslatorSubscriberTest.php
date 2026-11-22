@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\decoupled_router\Kernel;
 
-use PHPUnit\Framework\Attributes\Group;
-use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Drupal\Component\Serialization\Json;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Url;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\redirect\Entity\Redirect;
+use Drupal\Tests\decoupled_router\Traits\RolePermissionsTrait;
 use Drupal\user\RoleInterface;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -30,6 +31,8 @@ use Symfony\Component\HttpFoundation\Request;
 #[Group('decoupled_router')]
 #[RunTestsInSeparateProcesses]
 final class RedirectPathTranslatorSubscriberTest extends KernelTestBase {
+
+  use RolePermissionsTrait;
 
   /**
    * {@inheritdoc}
@@ -72,7 +75,7 @@ final class RedirectPathTranslatorSubscriberTest extends KernelTestBase {
     $this->installEntitySchema('path_alias');
     $this->installEntitySchema('redirect');
 
-    user_role_grant_permissions(
+    $this->grantPermissionsToRole(
       RoleInterface::ANONYMOUS_ID,
       ['access content', 'view test entity']
     );
@@ -287,7 +290,7 @@ final class RedirectPathTranslatorSubscriberTest extends KernelTestBase {
    */
   public function testRedirectToForbiddenEntityIsNotIntercepted(): void {
     $this->createTestEntity('/entity-test');
-    user_role_revoke_permissions(RoleInterface::ANONYMOUS_ID, ['view test entity']);
+    $this->revokePermissionsFromRole(RoleInterface::ANONYMOUS_ID, ['view test entity']);
 
     $redirect = Redirect::create(['status_code' => 301]);
     $redirect->setSource('/old-path');
